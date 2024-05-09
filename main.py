@@ -1,6 +1,6 @@
 """
 MultiView Structure From Motion
-         ---- A simple Practice
+         ---- A simple Practice in Python
 
 Requirements:
 opencv-python
