@@ -26,27 +26,30 @@ def visualize_edge(G, u, v):
 color_map = {}
 
 
-def visualize_points3d(points3d, color_indices=None):
+def visualize_points3d(points3d, colors=None, color_indices=None):
     points3d = np.array(points3d)
     assert points3d.shape[1] == 3, "Input should be a Nx3 numpy array"
+    if colors is not None:
+        assert colors.shape == points3d.shape
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-
-    if color_indices is not None:
+    if color_indices is not None and colors is None:
         unique_indices = np.unique(color_indices)
         for index in unique_indices:
             if index not in color_map:
                 # Assign a random color for new indices
                 color_map[index] = [random.random() for _ in range(3)]
-
-    # Scatter plot with colors
-    if color_indices is not None and len(color_indices) == len(points3d):
+        # Scatter plot using color indices
         for idx in unique_indices:
             idx_mask = color_indices == idx
             ax.scatter(points3d[idx_mask, 0], points3d[idx_mask, 1], points3d[idx_mask, 2],
                        color=color_map[idx], label=f"Index {idx}")
+    elif colors is not None:
+        # Convert BGR to RGB
+        colors_rgb = colors[:, [2, 1, 0]] / 255.
+        ax.scatter(points3d[:, 0], points3d[:, 1], points3d[:, 2], color=colors_rgb)
     else:
         ax.scatter(points3d[:, 0], points3d[:, 1], points3d[:, 2])
 

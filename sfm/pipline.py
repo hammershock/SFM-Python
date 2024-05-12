@@ -1,42 +1,32 @@
 import os
 import warnings
+import logging
 from builtins import len
 from collections import defaultdict
-from itertools import product
-from typing import Tuple
 
 import cv2
 import numpy as np
 from tqdm import tqdm
 import networkx as nx
 
-from .graph import mark_edge_constructed
+from .graph import mark_edge_constructed, generate_edges, select_edge
 from .io import image_extensions
 from .features import extract_sift
-from .cache_utils import memory, serialize_graph
+from .cache_utils import memory, serialize_graph, restore_graph
+from .metrics import calc_angle
+from .structure import triangulate_edge
 from .utils import timeit
-from .transforms import H_from_RT, Homogeneous2Euler, Euler2Homogeneous, H_from_rtvec
-
-
-def triangulate_points(P1, P2, pts1, pts2):
-    """使用OpenCV的triangulatePoints函数三角化点对"""
-    points_4d = cv2.triangulatePoints(P1, P2, pts1.T, pts2.T)
-    # 转换为齐次坐标
-    points_3d = points_4d[:3] / points_4d[3]
-    return points_3d.T
-
-
-def calc_angle(vec1, vec2):
-    dot_product = np.sum(vec1 * vec2, axis=0)
-    norms = np.linalg.norm(vec1, axis=0) * np.linalg.norm(vec2, axis=0)
-    cosine_angle = dot_product / norms
-    angle = np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
-    return angle
+from .transforms import H_from_rtvec
 
 
 @timeit
-@memory.cache
 def build_graph(image_dir, K):
+    G = build_graph_(image_dir, K)
+    return restore_graph(G)  # restore the cv2.KeyPoint and cv2.DMatch from pickleable dict
+
+
+@memory.cache
+def build_graph_(image_dir, K):
     G = nx.DiGraph()
 
     image_files = [filename for filename in os.listdir(image_dir) if filename.endswith(image_extensions)]
@@ -52,31 +42,6 @@ def build_graph(image_dir, K):
     G = generate_edges(G, K)
 
     return serialize_graph(G)  # notice: we should transform cv2.DMatch into dict to pickle
-
-
-def generate_edges(G: nx.DiGraph, K, min_matches=80):
-    """
-    the key of the edge data: E, F, matches, mask
-    """
-    bf = cv2.BFMatcher(cv2.NORM_L2)
-
-    combinations = [(i, j) for i, j in product(G.nodes, repeat=2) if i < j]
-    for i, j in tqdm(combinations, desc="matching key points"):
-        v1, v2 = G.nodes[i], G.nodes[j]
-        matches = bf.knnMatch(v1['desc'], v2['desc'], k=2)
-        # apply Lowe's ratio test
-        good_matches = [m for m, n in matches if m.distance < 0.5 * n.distance]
-        # The Fundamental Matrix be estimated only when 8 more pairs are available
-        if len(good_matches) > min_matches:
-            pts1 = np.float32([v1['kps'][m.queryIdx].pt for m in good_matches])  # positions (N, 2)
-            pts2 = np.float32([v2['kps'][m.trainIdx].pt for m in good_matches])  # positions (N, 2)
-            # Estimate Fundamental Matrix
-            F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_RANSAC, 0.1, 0.99)
-            inlier_matches = [good_matches[i] for i in range(len(mask)) if mask[i]]
-            if len(inlier_matches) > min_matches:
-                G.add_edge(i, j, F=F, E=K.T @ F @ K, matches=inlier_matches, mask=mask)
-
-    return G
 
 
 @timeit
@@ -119,51 +84,6 @@ def compute_tracks(G: nx.DiGraph, min_track_len=3) -> nx.DiGraph:
     return G
 
 
-def triangulate_edge(G, K, edge, H1=None, H2=None):
-    """
-    输入: 两个相机的位姿
-    输出: 三维世界坐标
-
-    G: 共视图
-    K: 3 * 3 相机内参
-    edge: tuple[int, int] 三角化的边
-    H1: 4 * 4 相机外参1
-    H2: 4 * 4 相机外参2
-    """
-    u, v = edge
-    edge_data = G[u][v]
-
-    # Essential Matrix Decomposition.
-    pts1 = np.float32([G.nodes[u]['kps'][m.queryIdx].pt for m in edge_data['matches']])  # p2d in matches of image u
-    pts2 = np.float32([G.nodes[v]['kps'][m.trainIdx].pt for m in edge_data['matches']])  # p2d in matches of image v
-
-    if H1 is None or H2 is None:
-        # initialize camera pose with Essential Matrix Decomposition
-        _, R, T, mask = cv2.recoverPose(edge_data['E'], pts1, pts2, K)
-        mask = mask.astype(bool).flatten()
-        H1 = np.eye(4)  # build the coord on the first Image
-        H2 = H_from_RT(R, T)
-
-    # projection matrices
-    M1, M2 = K @ H1[:3], K @ H2[:3]
-
-    # triangulate points
-    X3d_H = cv2.triangulatePoints(M1, M2, pts1.T, pts2.T)  # (4, N)
-    X3d_E = Homogeneous2Euler(X3d_H)  # (3, N)
-    X3d_H = Euler2Homogeneous(X3d_E)  # (4, N)
-
-    # Check if points are in front of both cameras
-    # Transform points back to each camera coordinate system
-    P1 = np.linalg.inv(H1) @ X3d_H
-    P2 = np.linalg.inv(H2) @ X3d_H
-
-    # Create masks where Z values are positive in both camera coordinate systems
-    mask = (P1[2, :] > 0) & (P2[2, :] > 0)
-    edge_data['mask_inliers'] = mask
-
-    return M1, M2, H1[:3], H2[:3], X3d_E, mask
-
-
 @timeit
 def initial_register(G, K):
     def mid_angle(edge):
@@ -183,7 +103,7 @@ def initial_register(G, K):
     angle, H1, H2, X3d, mask, (u, v) = min((mid_angle(edge) for edge in G.edges), key=lambda x: x[0])
 
     assert angle < 60, 'failed to find an edge to init.'
-    print(f'Initial Register Complete! medium angle: {angle}')
+    logging.info(f'Initial Register Complete! medium angle: {angle}')
 
     # Register Initial two Cameras.登记初始两个相机的位姿
     G.nodes[u]['H'] = H1
@@ -195,26 +115,26 @@ def initial_register(G, K):
 
     # 对两幅图像的所有成功重建的匹配点，标记他们的track为：已被重建过
     pairs = [(match.queryIdx, match.trainIdx) for match, available in zip(edge_data['matches'], mask) if available]
+    colors = []
     for n, (i, j) in enumerate(pairs):
         mark_edge_constructed(G, (u, v), i, j, n)
+        add_to_color(G, u, v, i, j, colors)
 
-    return X3d.T[mask]
-
-
-def select_edge(G: nx.DiGraph) -> Tuple[int, int, float]:
-    """
-    选择一条边，使得含有track中已经被重建过的比例最大
-    """
-    # TODO: is it correct? 还是两个图像中出现过的keypoint已经被重建的比例最大？
-    def votes(u, v, data):
-        cnt = sum(any(i in G.nodes[n]["constructed"] for n, i in track_set) for track_set in data["tracks"].values())
-        return cnt / len(data["tracks"]), (u, v)
-
-    ratio, (u, v) = max((votes(u, v, data) for u, v, data in G.edges(data=True) if not G[u][v].get('dirty')), key=lambda x: x[0])
-    return u, v, ratio
+    return X3d.T[mask], colors
 
 
-def apply_increment(G, K, X3d, increment_mask=None):
+def add_to_color(G, u, v, i, j, colors):
+    n1, n2 = G.nodes[u], G.nodes[v]
+    x1, y1 = np.array(n1["kps"][i].pt, dtype=int)
+    color1 = n1['image'][y1, x1, :]
+    x2, y2 = np.array(n2["kps"][j].pt, dtype=int)
+    color2 = n2['image'][y2, x2, :]
+    color = (color1 + color2) / 2
+    colors.append(color)
+
+
+@timeit
+def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05):
     if increment_mask is None or len(increment_mask) == 0:
         increment_mask = [0] * len(X3d)
 
@@ -229,6 +149,7 @@ def apply_increment(G, K, X3d, increment_mask=None):
     # Data Structure of Triangulation
     pts1 = []
     pts2 = []
+    ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
 
     # 对于这条边所有的配对
     for match in G[u][v]['matches']:
@@ -256,38 +177,38 @@ def apply_increment(G, K, X3d, increment_mask=None):
     # 如果没有足够的三维点-二维点对用于解算PnP（少于6对），则直接结束，因为没有解算的相机位姿提供给三角化，将没有办法继续添加新产生的三维点
     if len(pt3ds['left']) < 6 or len(pt3ds['right']) < 6:  # not enough points to PnP
         G[u][v]['dirty'] = True  # This edge has been used! # 不要忘记标记这个边已经用过了不能重复使用
-        return X3d, increment_mask
+        return ret, X3d, increment_mask, colors
 
     # 这里使用PnP解算出左右两个相机的位姿
-    retval1, r_vec_left, t_vec_left = cv2.solvePnP(np.array(pt3ds['left']), np.array(pt2ds['left']), K, np.zeros((1, 5)))
-    retval2, r_vec_right, t_vec_right = cv2.solvePnP(np.array(pt3ds['right']), np.array(pt2ds['right']), K, np.zeros((1, 5)))
-    H1 = H_from_rtvec(r_vec_left, t_vec_left)
-    H2 = H_from_rtvec(r_vec_right, t_vec_right)
+    retval1, r_l, t_l = cv2.solvePnP(np.array(pt3ds['left']), np.array(pt2ds['left']), K, np.zeros((1, 5)))
+    retval2, r_r, t_r = cv2.solvePnP(np.array(pt3ds['right']), np.array(pt2ds['right']), K, np.zeros((1, 5)))
 
     # 将解出来的位姿用于三角化，添加新的三维点
     pts1 = np.array(pts1)
     pts2 = np.array(pts2)
 
+    # 如果存在没有被重建的多余的匹配点，就将他们三角化，添加到重建好的三维点集中
     if len(pts2) > 0 and len(pts1) > 0:
-        M1, M2, H1, H2, X3d_new, visible_mask = triangulate_edge(G, K, (u, v), H1=H1, H2=H2)
+        M1, M2, H1, H2, X3d_new, visible_mask = (
+            triangulate_edge(G, K, (u, v), H1=H_from_rtvec(r_l, t_l), H2=H_from_rtvec(r_r, t_r)))
         X3d_new = X3d_new.T[visible_mask]
         # Register new two Cameras.
         G.nodes[u]['H'] = H1
         G.nodes[v]['H'] = H2
+
+        # 标记新的三角化出来的三维点的track为“已经被重建出来”
+        k = len(X3d)
+        pairs = [(match.queryIdx, match.trainIdx) for (match, available) in zip(G[u][v]['matches'], visible_mask) if available]
+        for n, (i, j) in enumerate(pairs):
+            mark_edge_constructed(G, (u, v), i, j, n + k)
+            if colors is not None:
+                add_to_color(G, u, v, i, j, colors)
+
+        # 将新的三维点附加在原来的后面
+        increment_mask.extend([increment_mask[-1] + 1] * len(X3d_new))
+        X3d = np.vstack((X3d, X3d_new))
+
+        G[u][v]['dirty'] = True  # This edge has been used!
     else:
         warnings.warn('no more point3ds added...')
-        return X3d, increment_mask
-
-    # 标记新的三角化出来的三维点的track为“已经被重建出来”
-    edge_data = G[u][v]
-    k = len(X3d)
-    pairs = [(match.queryIdx, match.trainIdx) for (match, available) in zip(G[u][v]['matches'], visible_mask) if available]
-    for n, (i, j) in enumerate(pairs):
-        mark_edge_constructed(G, (u, v), i, j, n + k)
-
-    # 将新的三维点附加在原来的后面
-    increment_mask.extend([increment_mask[-1] + 1] * len(X3d_new))
-    X3d = np.vstack((X3d, X3d_new))
-
-    G[u][v]['dirty'] = True  # This edge has been used!
-    return X3d, increment_mask
+    return ret, X3d, increment_mask, colors
