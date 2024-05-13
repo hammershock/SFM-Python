@@ -194,6 +194,7 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
     # 如果没有足够的三维点-二维点对用于解算PnP（少于6对），则直接结束，因为没有解算的相机位姿提供给三角化，将没有办法继续添加新产生的三维点
     if len(pt3ds['left']) < 6 or len(pt3ds['right']) < 6:  # not enough points to PnP
         G[u][v]['dirty'] = True  # This edge has been used! # 不要忘记标记这个边已经用过了不能重复使用
+        ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
         return ret, X3d
 
     # 这里使用PnP解算出左右两个相机的位姿
@@ -232,6 +233,8 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
         G[u][v]['dirty'] = True  # This edge has been used!
     else:
         warnings.warn('no more point3ds added...')
+
+    ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
     return ret, X3d
 
 
