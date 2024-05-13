@@ -4,8 +4,7 @@ from tkinter import scrolledtext
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from sfm import load_calibration_data, SFM
-from sfm.visualize import visualize_points3d
-
+import threading
 
 class StdoutRedirector(object):
     def __init__(self, text_widget):
@@ -17,8 +16,6 @@ class StdoutRedirector(object):
 
     def flush(self):
         pass
-
-
 
 class SFMApplication:
     def __init__(self, master):
@@ -50,11 +47,15 @@ class SFMApplication:
         self.ba_tol_entry.grid(row=3, column=1)
         self.ba_tol_entry.insert(0, "1e-10")
 
-        tk.Button(master, text="Run Reconstruction", command=self.run_reconstruction).grid(row=4, columnspan=2)
+        tk.Button(master, text="Run Reconstruction", command=self.start_thread).grid(row=4, columnspan=2)
 
         self.fig = plt.Figure(figsize=(5, 4))
         self.canvas = FigureCanvasTkAgg(self.fig, master)
         self.canvas.get_tk_widget().grid(row=6, columnspan=2)
+
+    def start_thread(self):
+        thread = threading.Thread(target=self.run_reconstruction)
+        thread.start()
 
     def run_reconstruction(self):
         image_dir = self.image_dir_entry.get()

@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2fb00905-7343-4dc2-87ef-5ebf66f91893" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/SFM.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/SFM.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -231,7 +229,7 @@
       <workItem from="1715399027391" duration="26191000" />
       <workItem from="1715510737200" duration="8662000" />
       <workItem from="1715565802127" duration="20427000" />
-      <workItem from="1715589998581" duration="10687000" />
+      <workItem from="1715589998581" duration="11010000" />
     </task>
     <servers />
   </component>
@@ -239,7 +237,7 @@
     <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/SFM_Python$app.coverage" NAME="app Coverage Results" MODIFIED="1715605577710" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SFM_Python$app.coverage" NAME="app Coverage Results" MODIFIED="1715605882008" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SFM_Python$io.coverage" NAME="io Coverage Results" MODIFIED="1715315741413" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctest_extract_2D_points.coverage" NAME="Doctest extract_2D_points Coverage Results" MODIFIED="1715568649466" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctest_load_calibration_data.coverage" NAME="Doctest load_calibration_data Coverage Results" MODIFIED="1715315685850" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
