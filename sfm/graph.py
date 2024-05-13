@@ -7,14 +7,20 @@ import numpy as np
 from tqdm import tqdm
 
 
-def mark_edge_constructed(G, edge, i, j, pos3d_index):
+from .data_stucture import X3D
+
+
+def mark_edge_constructed(G, X3d: X3D, edge, i, j, pos3d_index):
     """
-    标记这条边中i-j匹配点所在的track已经被重建过
+    标记这条边中i-j匹配点所在的track已经被重建过,
+    同时给P3d数据结构该三维点对应的所有二维点信息。
     """
     u, v = edge
     edge_data = G[u][v]
     for node_idx, feat_idx in edge_data["tracks"][(i, j)]:
         G.nodes[node_idx]["constructed"][feat_idx] = pos3d_index
+        x, y = np.array(G.nodes[node_idx]["kps"][feat_idx].pt, dtype=int)
+        X3d.add_track(pos3d_index, node_idx, feat_idx, x, y)
 
 
 def generate_edges(G: nx.DiGraph, K, min_matches=80):

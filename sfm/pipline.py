@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 import networkx as nx
 
+from .data_stucture import X3D
 from .graph import mark_edge_constructed, generate_edges, select_edge
 from .io import image_extensions
 from .features import extract_sift
@@ -17,6 +18,7 @@ from .metrics import calc_angle
 from .structure import triangulate_edge
 from .utils import timeit
 from .transforms import H_from_rtvec, H_from_RT
+from .bundle_adjustment import bundle_adjustment
 
 
 @timeit
@@ -85,7 +87,7 @@ def compute_tracks(G: nx.DiGraph, min_track_len=3) -> nx.DiGraph:
 
 
 @timeit
-def initial_register(G, K):
+def initial_register(G, K) -> X3D:
     def mid_angle(edge):
         u, v = edge
         edge_data = G[u][v]
@@ -113,7 +115,7 @@ def initial_register(G, K):
         return angle, H1, H2, X3d_E, mask, edge
 
     # choose the best edge from the Graph according to the median angle...
-    angle, H1, H2, X3d, mask, (u, v) = min((mid_angle(edge) for edge in G.edges), key=lambda x: x[0])
+    angle, H1, H2, points3d, mask, (u, v) = min((mid_angle(edge) for edge in G.edges), key=lambda x: x[0])
 
     assert angle < 60, 'failed to find an edge to init.'
     logging.info(f'Initial Register Complete! medium angle: {angle}')
@@ -126,14 +128,17 @@ def initial_register(G, K):
     # 标记这个边为：已经使用过
     edge_data['dirty'] = True  # this edge has been used!
 
+    X3d = X3D(G)
     # 对两幅图像的所有成功重建的匹配点，标记他们的track为：已被重建过
     pairs = [(match.queryIdx, match.trainIdx) for match, available in zip(edge_data['matches'], mask) if available]
     colors = []
     for n, (i, j) in enumerate(pairs):
-        mark_edge_constructed(G, (u, v), i, j, n)
+        mark_edge_constructed(G, X3d, (u, v), i, j, n)
         add_to_color(G, u, v, i, j, colors)
 
-    return X3d.T[mask], colors
+    X3d.add_points(points3d.T[mask])
+    X3d.add_colors(colors)
+    return X3d
 
 
 def add_to_color(G, u, v, i, j, colors):
@@ -147,10 +152,7 @@ def add_to_color(G, u, v, i, j, colors):
 
 
 @timeit
-def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05):
-    if increment_mask is None or len(increment_mask) == 0:
-        increment_mask = [0] * len(X3d)
-
+def apply_increment(G, K, X3d, min_ratio=0.05):
     # select the best edge to begin.
     u, v, ratio = select_edge(G)
     print(f'choose {(u, v)}, votes: {ratio}')
@@ -192,7 +194,7 @@ def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05)
     # 如果没有足够的三维点-二维点对用于解算PnP（少于6对），则直接结束，因为没有解算的相机位姿提供给三角化，将没有办法继续添加新产生的三维点
     if len(pt3ds['left']) < 6 or len(pt3ds['right']) < 6:  # not enough points to PnP
         G[u][v]['dirty'] = True  # This edge has been used! # 不要忘记标记这个边已经用过了不能重复使用
-        return ret, X3d, increment_mask, colors
+        return ret, X3d
 
     # 这里使用PnP解算出左右两个相机的位姿
     retval1, r_l, t_l = cv2.solvePnP(np.array(pt3ds['left']), np.array(pt2ds['left']), K, np.zeros((1, 5)))
@@ -217,16 +219,39 @@ def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05)
         # 标记新的三角化出来的三维点的track为“已经被重建出来”
         k = len(X3d)
         pairs = [pair for pair, available in zip(pairs_constructed, visible_mask) if available]
+
+        colors = []
         for n, (i, j) in enumerate(pairs):
-            mark_edge_constructed(G, (u, v), i, j, n + k)
-            if colors is not None:
-                add_to_color(G, u, v, i, j, colors)
+            mark_edge_constructed(G, X3d, (u, v), i, j, n + k)
+            add_to_color(G, u, v, i, j, colors)
 
         # 将新的三维点附加在原来的后面
-        increment_mask.extend([increment_mask[-1] + 1] * len(X3d_new))
-        X3d = np.vstack((X3d, X3d_new))
+        X3d.add_points(X3d_new)
+        X3d.add_colors(colors)
 
         G[u][v]['dirty'] = True  # This edge has been used!
     else:
         warnings.warn('no more point3ds added...')
-    return ret, X3d, increment_mask, colors
+    return ret, X3d
+
+
+def apply_bundle_adjustment(G: nx.DiGraph, K, X3d: X3D):
+    # step 1; build the R_set and C_set
+    # R_set, C_set: the pose of all cameras registered, from the vertex of the Graph
+    R_set, C_set, node_indices = [], [], []
+    for node, data in G.nodes(data=True):  # check if the node is registered
+        H = data.get('H')  # with shape 4 * 4
+        if H is not None:
+            R = H[:3, :3]
+            T = H[:3, 3:]
+            R_set.append(R)
+            C_set.append(T)
+            node_indices.append(node)
+
+    # apply bundle adjustment
+    (optimized_R_set, optimized_C_set), optimized_points_3d, camera_ids = bundle_adjustment(X3d, R_set, C_set, K, node_indices)
+    X3d.data = optimized_points_3d
+    for camera_id, R, T in zip(camera_ids, optimized_R_set, optimized_C_set):
+        G.nodes[camera_id]['H'] = H_from_RT(R, T)
+    print(f'completed!')
+    return X3d
