@@ -1,231 +1,134 @@
 import numpy as np
-import cv2
 from scipy.sparse import lil_matrix
-import time
 from scipy.optimize import least_squares
-from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Rotation as Rot
 
 
-def getEuler(R2):
-    euler = Rotation.from_matrix(R2)
-    return euler.as_rotvec()
+def find_visible_points(X_found, filtered_feature_flag, nCam):
+    """Identify indices and visibility matrix for 3D points visible in cameras."""
+    visibility = np.any(filtered_feature_flag[:, :nCam + 1], axis=1)
+    visible_indices = np.where(X_found & visibility)[0]
+    visibility_matrix = filtered_feature_flag[visible_indices, :nCam + 1]
+    return visible_indices, visibility_matrix
 
 
-def getRotation(Q, type_='q'):
-    if type_ == 'q':
-        R = Rotation.from_quat(Q)
-        return R.as_matrix()
-    elif type_ == 'e':
-        R = Rotation.from_rotvec(Q)
-        return R.as_matrix()
-
-
-##########################################################################################
-########################### Helper Functions for BA ######################################
-##########################################################################################
-def getObservationsIndexAndVizMat(X_found, filtered_feature_flag, nCam):
-    """
-    Determines the indices of 3D points visible in at least one of the specified cameras and constructs a visibility matrix.
-
-    Parameters:
-    X_found (numpy array): A binary array indicating whether each point is found (1) or not (0).
-    filtered_feature_flag (numpy array): A matrix indicating visibility of points in each camera. Dimensions should be (number of points) x (number of cameras).
-    nCam (int): Number of cameras to consider.
-
-    Returns:
-    tuple: A tuple containing:
-        - numpy array: Indices of points visible in the cameras.
-        - numpy array: Visibility matrix for these points across the specified cameras.
-    """
-    # find the 3d points such that they are visible in either of the cameras < nCam
-    bin_temp = np.zeros((filtered_feature_flag.shape[0]), dtype=int)
-    for n in range(nCam + 1):
-        bin_temp = bin_temp | filtered_feature_flag[:, n]
-
-    X_index = np.where((X_found.reshape(-1)) & (bin_temp))
-
-    visiblity_matrix = X_found[X_index].reshape(-1, 1)
-    for n in range(nCam + 1):
-        visiblity_matrix = np.hstack((visiblity_matrix, filtered_feature_flag[X_index, n].reshape(-1, 1)))
-
-    o, c = visiblity_matrix.shape
-    return X_index, visiblity_matrix[:, 1:c]
-
-
-def get2DPoints(X_index, visiblity_matrix, feature_x, feature_y):
-    """
-    Retrieves 2D point coordinates from feature arrays based on visibility matrix and indices.
-
-    Parameters:
-    X_index (numpy array): Indices of visible points.
-    visibility_matrix (numpy array): A matrix indicating visibility of each point in different cameras.
-    feature_x (numpy array): X coordinates of the features.
-    feature_y (numpy array): Y coordinates of the features.
-
-    Returns:
-    numpy array: Array of 2D coordinates of the points visible in the cameras.
-    """
+def extract_2D_points(indices, visibility_matrix, feature_x, feature_y):
+    """Extract 2D points based on the visibility matrix and indices."""
+    visible_features_x = feature_x[indices]
+    visible_features_y = feature_y[indices]
     pts2D = []
-    visible_feature_x = feature_x[X_index]
-    visible_feature_y = feature_y[X_index]
-    h, w = visiblity_matrix.shape
-    for i in range(h):
-        for j in range(w):
-            if visiblity_matrix[i, j] == 1:
-                pt = np.hstack((visible_feature_x[i, j], visible_feature_y[i, j]))
-                pts2D.append(pt)
-    return np.array(pts2D).reshape(-1, 2)
+    for i in range(len(indices)):
+        for j in range(visibility_matrix.shape[1]):
+            if visibility_matrix[i, j]:
+                pts2D.append([visible_features_x[i, j], visible_features_y[i, j]])
+    return np.array(pts2D)
 
 
-def getCameraPointIndices(visiblity_matrix):
-    """
-    Extracts camera and point indices where points are visible based on the visibility matrix.
-
-    Parameters:
-    visibility_matrix (numpy array): A matrix indicating visibility of each point in different cameras.
-
-    Returns:
-    tuple: A tuple containing:
-        - numpy array: Camera indices for each visible point.
-        - numpy array: Point indices corresponding to these camera indices.
-    """
-    camera_indices = []
-    point_indices = []
-    h, w = visiblity_matrix.shape
-    for i in range(h):
-        for j in range(w):
-            if visiblity_matrix[i, j] == 1:
-                camera_indices.append(j)
-                point_indices.append(i)
-
-    return np.array(camera_indices).reshape(-1), np.array(point_indices).reshape(-1)
-
-
-##########################################################################################
-##########################################################################################
-##########################################################################################
-
-def bundle_adjustment_sparsity(X_found, filtered_feature_flag, nCam):
-    """
-    To create the Sparsity matrix
-    """
-    number_of_cam = nCam + 1
-    X_index, visiblity_matrix = getObservationsIndexAndVizMat(X_found.reshape(-1), filtered_feature_flag, nCam)
-    n_observations = np.sum(visiblity_matrix)
-    n_points = len(X_index[0])
-
+def create_sparsity_matrix(n_cameras, n_points, visibility_matrix):
+    """Create a sparsity structure for the Jacobian matrix used in optimization."""
+    n_observations = np.sum(visibility_matrix)
     m = n_observations * 2
-    n = number_of_cam * 6 + n_points * 3
+    n = n_cameras * 6 + n_points * 3
     A = lil_matrix((m, n), dtype=int)
-    print(m, n)
 
-    i = np.arange(n_observations)
-    camera_indices, point_indices = getCameraPointIndices(visiblity_matrix)
-
-    for s in range(6):
-        A[2 * i, camera_indices * 6 + s] = 1
-        A[2 * i + 1, camera_indices * 6 + s] = 1
-
-    for s in range(3):
-        A[2 * i, (nCam) * 6 + point_indices * 3 + s] = 1
-        A[2 * i + 1, (nCam) * 6 + point_indices * 3 + s] = 1
-
+    obs_indices = np.nonzero(visibility_matrix)
+    for i, (point_idx, cam_idx) in enumerate(zip(*obs_indices)):
+        row = i * 2
+        A[row:row + 2, cam_idx * 6:cam_idx * 6 + 6] = 1
+        A[row:row + 2, n_cameras * 6 + point_idx * 3:n_cameras * 6 + point_idx * 3 + 3] = 1
     return A
 
 
-# def project(points, camera_params, K):
-#     """Convert 3-D points to 2-D by projecting onto images."""
-#     points_proj = rotate(points, camera_params[:, :3])
-#     points_proj += camera_params[:, 3:]
-#     points_proj = -points_proj[:, :2] / points_proj[:, 2, np.newaxis]
-#     return points_proj
+def project(points, camera_params, K):
+    """Project 3D points onto camera image planes using the camera parameters and intrinsic matrix K."""
+    results = []
 
-def project(points_3d, camera_params, K):
-    def projectPoint_(R, C, pt3D, K):
-        P2 = np.dot(K, np.dot(R, np.hstack((np.identity(3), -C.reshape(3, 1)))))
-        x3D_4 = np.hstack((pt3D, 1))
-        x_proj = np.dot(P2, x3D_4.T)
-        x_proj /= x_proj[-1]
-        return x_proj
+    for point, params in zip(points, camera_params):
+        R = Rot.from_rotvec(params[:3]).as_matrix()
+        T = params[3:]
+        M = K @ np.hstack((R, -R @ T[:, np.newaxis]))
 
-    x_proj = []
-    for i in range(len(camera_params)):
-        R = getRotation(camera_params[i, :3], 'e')
-        C = camera_params[i, 3:].reshape(3, 1)
-        pt3D = points_3d[i]
-        pt_proj = projectPoint_(R, C, pt3D, K)[:2]
-        x_proj.append(pt_proj)
-    return np.array(x_proj)
+        projected_point = M @ np.append(point, 1)
+        results.append(projected_point[:2] / projected_point[2])
+
+    return np.array(results)
 
 
-def rotate(points, rot_vecs):
-    """Rotate points by given rotation vectors.
+def compute_residuals(x, n_cameras, n_points, camera_indices, point_indices, points_2d, K):
+    """Compute residuals for the optimization."""
+    camera_params = x[:n_cameras * 6].reshape((n_cameras, 6))
+    points_3d = x[n_cameras * 6:].reshape((n_points, 3))
+    projected_points = project(points_3d[point_indices], camera_params[camera_indices], K)
+    output = (projected_points - points_2d).ravel()
+    return output
 
-    Rodrigues' rotation formula is used.
+
+def get_camera_and_point_indices(visibility_matrix):
+    """Extract indices for cameras and corresponding points based on visibility matrix."""
+    camera_indices = []
+    point_indices = []
+    for i in range(visibility_matrix.shape[0]):
+        for j in range(visibility_matrix.shape[1]):
+            if visibility_matrix[i, j]:
+                camera_indices.append(j)
+                point_indices.append(i)
+    return np.array(camera_indices), np.array(point_indices)
+
+
+def decode_optimized_parameters(x, n_cam, n_points):
+    """Decode optimized parameters from the result of least squares optimization."""
+    # Camera parameters are the first n_cam * 6 elements
+    camera_params = x[:n_cam * 6].reshape((n_cam, 6))
+    optimized_R_set = []
+    optimized_C_set = []
+    for params in camera_params:
+        euler_angles = params[:3]
+        translation = params[3:]
+        rotation_matrix = Rot.from_rotvec(euler_angles).as_matrix()
+        optimized_R_set.append(rotation_matrix)
+        optimized_C_set.append(translation.reshape(3, 1))
+
+    # Remaining elements are the 3D point coordinates
+    optimized_points_3d = x[n_cam * 6:].reshape((n_points, 3))
+
+    return (optimized_R_set, optimized_C_set), optimized_points_3d
+
+
+def bundle_adjustment(X_all, X_found, pts_x, pts_y, filtered_feature_flag, R_set, C_set, K, n_cam):
     """
-    theta = np.linalg.norm(rot_vecs, axis=1)[:, np.newaxis]
-    with np.errstate(invalid='ignore'):
-        v = rot_vecs / theta
-        v = np.nan_to_num(v)
-    dot = np.sum(points * v, axis=1)[:, np.newaxis]
-    cos_theta = np.cos(theta)
-    sin_theta = np.sin(theta)
+    Perform bundle adjustment to optimize camera poses and 3D point locations.
 
-    return cos_theta * points + sin_theta * np.cross(v, points) + dot * (1 - cos_theta) * v
+    Args:
+        X_all (numpy.ndarray): Array of all 3D points in the scene, shape (n_points, 3).
+        X_found (numpy.ndarray): Boolean array indicating which 3D points are found/observed, shape (n_points).
+        pts_x (numpy.ndarray): 2D array of x coordinates of the 2D points in image planes, shape (n_points, n_cameras).
+        pts_y (numpy.ndarray): 2D array of y coordinates of the 2D points in image planes, shape (n_points, n_cameras).
+        filtered_feature_flag (numpy.ndarray): Boolean array indicating visibility of each 3D point in each camera, shape (n_points, n_cameras).
+        R_set (list of numpy.ndarray): List of rotation matrices for each camera, each shape (3, 3).
+        C_set (list of numpy.ndarray): List of translation vectors for each camera, each shape (3,).
+        K (numpy.ndarray): Camera intrinsic matrix, shape (3, 3).
+        n_cam (int): Number of cameras.
 
+    Returns:
+        tuple: A tuple containing:
+            - tuple: A tuple of lists, where the first list contains rotation matrices (each shape (3, 3)) and the second list contains translation vectors (each shape (3, 1)) for each camera.
+            - numpy.ndarray: Array of optimized 3D points, shape (n_filtered_points, 3), where n_filtered_points is the number of 3D points visible in at least one camera.
 
-def fun(x0, nCam, n_points, camera_indices, point_indices, points_2d, K):
-    """Compute residuals.
-
-    `params` contains camera parameters and 3-D coordinates.
+    This function optimizes the camera poses and 3D point positions by minimizing the reprojection error using the least squares method. The optimization adjusts both the camera parameters (rotation and translation) and the coordinates of the 3D points based on the observed 2D points in the camera image planes.
     """
-    number_of_cam = nCam + 1
-    camera_params = x0[:number_of_cam * 6].reshape((number_of_cam, 6))
-    points_3d = x0[number_of_cam * 6:].reshape((n_points, 3))
-    points_proj = project(points_3d[point_indices], camera_params[camera_indices], K)
-    error_vec = (points_proj - points_2d).ravel()
+    indices, visibility_matrix = find_visible_points(X_found, filtered_feature_flag, n_cam)
+    points_3d = X_all[indices]  # 已经被重构出来的点索引
+    points_2d = extract_2D_points(indices, visibility_matrix, pts_x, pts_y)  # 所有已被重构出来的点，所有视图中的可见的平面点的堆叠
 
-    return error_vec
+    camera_params = [(Rot.from_matrix(R).as_rotvec(), C) for R, C in zip(R_set, C_set)]
+    initial_guess = np.hstack([np.hstack([e, C]).ravel() for e, C in camera_params] + [points_3d.ravel()])  # (21, )
+    # Generate sparsity matrix and indices
+    camera_indices, point_indices = get_camera_and_point_indices(visibility_matrix)
+    jac_sparsity = create_sparsity_matrix(n_cam, len(points_3d), visibility_matrix)  # (8, 21)
 
+    result = least_squares(compute_residuals, initial_guess, jac_sparsity=jac_sparsity, verbose=0,
+                           x_scale='jac', ftol=1e-10, method='trf',
+                           args=(n_cam, len(points_3d), camera_indices, point_indices, points_2d, K))
 
-def BundleAdjustment(X_all, X_found, feature_x, feature_y, filtered_feature_flag, R_set_, C_set_, K, n_camera):
-    X_index, visiblity_matrix = getObservationsIndexAndVizMat(X_found, filtered_feature_flag, n_camera)
-    points_3d = X_all[X_index]
-    points_2d = get2DPoints(X_index, visiblity_matrix, feature_x, feature_y)
-
-    RC_list = []
-    for i in range(n_camera + 1):
-        C, R = C_set_[i], R_set_[i]
-        Q = getEuler(R)
-        RC = [Q[0], Q[1], Q[2], C[0], C[1], C[2]]
-        RC_list.append(RC)
-    RC_list = np.array(RC_list).reshape(-1, 6)
-
-    x0 = np.hstack((RC_list.ravel(), points_3d.ravel()))
-    n_points = points_3d.shape[0]
-
-    camera_indices, point_indices = getCameraPointIndices(visiblity_matrix)
-
-    A = bundle_adjustment_sparsity(X_found, filtered_feature_flag, n_camera)
-    t0 = time.time()
-    res = least_squares(fun, x0, jac_sparsity=A, verbose=2, x_scale='jac', ftol=1e-10, method='trf',
-                        args=(n_camera, n_points, camera_indices, point_indices, points_2d, K))
-    t1 = time.time()
-    print('time to run BA :', t1 - t0, 's \nA matrix shape: ', A.shape, '\n############')
-
-    x1 = res.x
-    number_of_cam = n_camera + 1
-    optimized_camera_params = x1[:number_of_cam * 6].reshape((number_of_cam, 6))
-    optimized_points_3d = x1[number_of_cam * 6:].reshape((n_points, 3))
-
-    optimized_X_all = np.zeros_like(X_all)
-    optimized_X_all[X_index] = optimized_points_3d
-
-    optimized_C_set, optimized_R_set = [], []
-    for i in range(len(optimized_camera_params)):
-        R = getRotation(optimized_camera_params[i, :3], 'e')
-        C = optimized_camera_params[i, 3:].reshape(3, 1)
-        optimized_C_set.append(C)
-        optimized_R_set.append(R)
-
-    return optimized_R_set, optimized_C_set, optimized_X_all
+    (optimized_R_set, optimized_C_set), optimized_points_3d = decode_optimized_parameters(result.x, n_cam, len(points_3d))
+    return (optimized_R_set, optimized_C_set), optimized_points_3d

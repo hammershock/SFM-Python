@@ -30,6 +30,7 @@ def visualize_points3d(points3d, colors=None, color_indices=None):
     points3d = np.array(points3d)
     assert points3d.shape[1] == 3, "Input should be a Nx3 numpy array"
     if colors is not None:
+        colors = np.array(colors)
         assert colors.shape == points3d.shape
 
     fig = plt.figure()
@@ -54,14 +55,12 @@ def visualize_points3d(points3d, colors=None, color_indices=None):
         ax.scatter(points3d[:, 0], points3d[:, 1], points3d[:, 2])
 
     # Labeling the axes
-    ax.set_xlabel('X Coordinate')
-    ax.set_ylabel('Y Coordinate')
-    ax.set_zlabel('Z Coordinate')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
 
     # Title and legend
     ax.set_title('3D Point Visualization')
-    if color_indices is not None:
-        ax.legend(title="Color Indices")
 
     plt.show()
 
