@@ -1,10 +1,11 @@
 import sys
 import tkinter as tk
-from tkinter import scrolledtext
+from tkinter import scrolledtext, Toplevel
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from sfm import load_calibration_data, SFM
 import threading
+from sfm import load_calibration_data, SFM
+
 
 class StdoutRedirector(object):
     def __init__(self, text_widget):
@@ -20,42 +21,44 @@ class StdoutRedirector(object):
 class SFMApplication:
     def __init__(self, master):
         self.master = master
+        self.thread = None
+        self.thread_running = False
         master.title("SFM Reconstruction GUI")
 
-        # Redirect stdout
-        self.output_console = scrolledtext.ScrolledText(master, height=10, width=70)
-        self.output_console.grid(row=5, columnspan=2)
-        sys.stdout = StdoutRedirector(self.output_console)
-
         # Set up the GUI
-        tk.Label(master, text="Image Directory:").grid(row=0)
+        tk.Label(master, text="Image Directory:").grid(row=0, column=0, sticky='ew')
         self.image_dir_entry = tk.Entry(master, width=50)
-        self.image_dir_entry.grid(row=0, column=1)
+        self.image_dir_entry.grid(row=0, column=1, sticky='ew')
         self.image_dir_entry.insert(0, "./ImageDataset_SceauxCastle/images")
 
-        tk.Label(master, text="Calibration File:").grid(row=1)
+        tk.Label(master, text="Calibration File:").grid(row=1, column=0, sticky='ew')
         self.cal_file_entry = tk.Entry(master, width=50)
-        self.cal_file_entry.grid(row=1, column=1)
+        self.cal_file_entry.grid(row=1, column=1, sticky='ew')
         self.cal_file_entry.insert(0, "./ImageDataset_SceauxCastle/images/K.txt")
 
-        tk.Label(master, text="Use Bundle Adjustment:").grid(row=2)
+        tk.Label(master, text="Use Bundle Adjustment:").grid(row=2, column=0, sticky='ew')
         self.use_ba_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(master, text="Enable", variable=self.use_ba_var).grid(row=2, column=1)
+        tk.Checkbutton(master, text="Enable", variable=self.use_ba_var).grid(row=2, column=1, sticky='ew')
 
-        tk.Label(master, text="BA tol").grid(row=3)
+        tk.Label(master, text="BA tol").grid(row=3, column=0, sticky='ew')
         self.ba_tol_entry = tk.Entry(master, width=50)
-        self.ba_tol_entry.grid(row=3, column=1)
+        self.ba_tol_entry.grid(row=3, column=1, sticky='ew')
         self.ba_tol_entry.insert(0, "1e-10")
 
-        tk.Button(master, text="Run Reconstruction", command=self.start_thread).grid(row=4, columnspan=2)
+        tk.Button(master, text="Run Reconstruction", command=self.start_thread).grid(row=4, columnspan=2, sticky='ew')
+
+        self.output_console = scrolledtext.ScrolledText(master, height=15)
+        self.output_console.grid(row=5, columnspan=2, sticky='nsew')
+        sys.stdout = StdoutRedirector(self.output_console)
 
         self.fig = plt.Figure(figsize=(5, 4))
-        self.canvas = FigureCanvasTkAgg(self.fig, master)
-        self.canvas.get_tk_widget().grid(row=6, columnspan=2)
 
     def start_thread(self):
-        thread = threading.Thread(target=self.run_reconstruction)
-        thread.start()
+        if self.thread_running:
+            return  # Ignore button clicks if a thread is already running
+        self.thread_running = True
+        self.thread = threading.Thread(target=self.run_reconstruction)
+        self.thread.start()
 
     def run_reconstruction(self):
         image_dir = self.image_dir_entry.get()
@@ -67,22 +70,27 @@ class SFMApplication:
             print("Loading calibration data...")
             K = load_calibration_data(cal_file)
             print("Initializing SFM...")
-            sfm = SFM(image_dir, K)
+            sfm = SFM(image_dir, K, callback_group={"after_ba": self.plot_results})
             print("Running reconstruction...")
-            X3d, colors = sfm.reconstruct(use_ba=use_ba, ba_tol=ba_tol)
-            self.plot_results(X3d, colors)
+            X3d, colors = sfm.reconstruct(use_ba=use_ba, ba_tol=ba_tol, verbose=0)
             print("Reconstruction completed successfully.")
+            self.master.after(0, self.plot_results, X3d, colors)
         except Exception as e:
             print(f"Error: {str(e)}")
+        finally:
+            self.thread_running = False
 
     def plot_results(self, X3d, colors):
+        new_window = Toplevel(self.master)
+        new_window.title("Reconstruction Results")
+        canvas = FigureCanvasTkAgg(self.fig, new_window)
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         ax = self.fig.add_subplot(111, projection='3d')
-        ax.clear()
         ax.scatter(X3d[:, 0], X3d[:, 1], X3d[:, 2], c=colors/255.0)
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        self.canvas.draw()
+        canvas.draw()
 
 
 if __name__ == '__main__':

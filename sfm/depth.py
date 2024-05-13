@@ -2,6 +2,9 @@ import cv2
 import networkx as nx
 import numpy as np
 
+from .transforms import RT_from_H
+
+
 stereo = cv2.StereoBM_create(numDisparities=16, blockSize=15)
 
 
@@ -40,3 +43,9 @@ def display_edge_depth(G: nx.DiGraph, edge, K):
     n1, n2 = G.nodes[u], G.nodes[v]
     image_left = n1['image']
     image_right = n2['image']
+    H1 = n1['H']
+    H2 = n2['H']
+    R1, T1 = RT_from_H(H1)
+    R2, T2 = RT_from_H(H2)
+    display_depth(image_left, image_right, K, R1, R2, T1, T2)
+

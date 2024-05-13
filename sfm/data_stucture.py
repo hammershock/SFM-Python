@@ -11,7 +11,7 @@ class X3D:
         self.data = np.empty((0, 3))
         self._increment_id = 0
         self.increment_mask: list = []
-        self.colors: list = []
+        self._colors: list = []
         self._tree = defaultdict(list)
 
     def add_points(self, X3d_new):
@@ -20,7 +20,11 @@ class X3D:
         self._increment_id += 1
 
     def add_colors(self, colors):
-        self.colors.extend(colors)
+        self._colors.extend(colors)
+
+    @property
+    def colors(self):
+        return np.array(self._colors)
 
     def add_track(self, x3d_index, camera_id, feature_id, x, y):
         self._tree[x3d_index].append((camera_id, feature_id, x, y))

@@ -82,7 +82,7 @@ def decode_optimized_parameters(x, n_cam, n_points):
     return (optimized_R_set, optimized_C_set), optimized_points_3d
 
 
-def bundle_adjustment(X_all: X3D, R_set, C_set, K, node_indices, tol=1e-10):
+def bundle_adjustment(X_all: X3D, R_set, C_set, K, node_indices, tol=1e-10, verbose=0):
     """
     Perform bundle adjustment to optimize camera poses and 3D point locations.
 
@@ -112,7 +112,7 @@ def bundle_adjustment(X_all: X3D, R_set, C_set, K, node_indices, tol=1e-10):
     # Generate sparsity matrix and indices
     jac_sparsity = create_sparsity_matrix(n_cam, len(X_all), camera_indices, point_indices)  # (8, 21)
 
-    result = least_squares(compute_residuals, initial_guess, jac_sparsity=jac_sparsity, verbose=2,
+    result = least_squares(compute_residuals, initial_guess, jac_sparsity=jac_sparsity, verbose=verbose,
                            x_scale='jac', ftol=tol, method='trf',
                            args=(n_cam, len(X_all), camera_indices, point_indices, points_2d, K))
 

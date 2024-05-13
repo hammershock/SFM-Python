@@ -9,6 +9,12 @@ def H_from_RT(R, T):
     return H
 
 
+def RT_from_H(H):
+    R = H[:3, :3]
+    T = H[:3, 3].flatten()
+    return R, T
+
+
 def H_from_rtvec(rvec, tvec):
     R, _ = cv2.Rodrigues(rvec)
     H = np.eye(4)
