@@ -1,3 +1,5 @@
+import numpy as np
+
 from .pipline import build_graph, compute_tracks, initial_register, apply_increment, apply_bundle_adjustment
 from .visualize import visualize_points3d
 
@@ -22,5 +24,5 @@ class SFM(object):
             if not ret: break
 
         print(f'reconstruct done!')
-        return X3d.data, X3d.colors
+        return X3d.data, np.array(X3d.colors)
 
