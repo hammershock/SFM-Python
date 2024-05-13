@@ -13,8 +13,6 @@ networkx
 @author: Hanmo Zhang
 @email: zhanghanmo@bupt.edu.cn
 """
-import numpy as np
-
 from sfm import load_calibration_data, SFM
 from sfm.visualize import visualize_edge, visualize_points3d, visualize_graph
 

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from .transforms import H_from_RT, Homogeneous2Euler, Euler2Homogeneous
+from .transforms import H_from_RT, normalize_homogeneous
 
 
 def skew(x):
@@ -54,7 +54,17 @@ def compute_P_from_essential(E):
     return P2s
 
 
-def triangulate_edge(G, K, edge, H1=None, H2=None):
+def generate_visibility_mask(H1, H2, X3d_H):
+    # Generate Mask
+    P1 = np.linalg.inv(H1) @ X3d_H
+    P2 = np.linalg.inv(H2) @ X3d_H
+
+    # Create masks where Z values are positive in both camera coordinate systems
+    mask = (P1[2, :] > 0) & (P2[2, :] > 0)
+    return mask
+
+
+def triangulate_edge(pts1, pts2, K, H1, H2):
     """
     输入: 两个相机的位姿
     输出: 三维世界坐标
@@ -65,35 +75,13 @@ def triangulate_edge(G, K, edge, H1=None, H2=None):
     H1: 4 * 4 相机外参1
     H2: 4 * 4 相机外参2
     """
-    u, v = edge
-    edge_data = G[u][v]
-
-    # Essential Matrix Decomposition.
-    pts1 = np.float32([G.nodes[u]['kps'][m.queryIdx].pt for m in edge_data['matches']])  # p2d in matches of image u
-    pts2 = np.float32([G.nodes[v]['kps'][m.trainIdx].pt for m in edge_data['matches']])  # p2d in matches of image v
-
-    if H1 is None or H2 is None:
-        # initialize camera pose with Essential Matrix Decomposition
-        _, R, T, mask = cv2.recoverPose(edge_data['E'], pts1, pts2, K)
-        mask = mask.astype(bool).flatten()
-        H1 = np.eye(4)  # build the coord on the first Image
-        H2 = H_from_RT(R, T)
-
     # projection matrices
     M1, M2 = K @ H1[:3], K @ H2[:3]
 
     # triangulate points
     X3d_H = cv2.triangulatePoints(M1, M2, pts1.T, pts2.T)  # (4, N)
-    X3d_E = Homogeneous2Euler(X3d_H)  # (3, N)
-    X3d_H = Euler2Homogeneous(X3d_E)  # (4, N)
+    X3d_H = normalize_homogeneous(X3d_H)  # (4, N)
+    X3d_E = X3d_H[:3, :]
+    mask = generate_visibility_mask(H1, H2, X3d_H)
+    return X3d_E, mask
 
-    # Check if points are in front of both cameras
-    # Transform points back to each camera coordinate system
-    P1 = np.linalg.inv(H1) @ X3d_H
-    P2 = np.linalg.inv(H2) @ X3d_H
-
-    # Create masks where Z values are positive in both camera coordinate systems
-    mask = (P1[2, :] > 0) & (P2[2, :] > 0)
-    edge_data['mask_inliers'] = mask
-
-    return M1, M2, H1[:3], H2[:3], X3d_E, mask

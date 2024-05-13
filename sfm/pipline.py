@@ -16,7 +16,7 @@ from .cache_utils import memory, serialize_graph, restore_graph
 from .metrics import calc_angle
 from .structure import triangulate_edge
 from .utils import timeit
-from .transforms import H_from_rtvec
+from .transforms import H_from_rtvec, H_from_RT
 
 
 @timeit
@@ -87,7 +87,20 @@ def compute_tracks(G: nx.DiGraph, min_track_len=3) -> nx.DiGraph:
 @timeit
 def initial_register(G, K):
     def mid_angle(edge):
-        M1, M2, H1, H2, X3d_E, mask = triangulate_edge(G, K, edge)
+        u, v = edge
+        edge_data = G[u][v]
+
+        # Essential Matrix Decomposition.
+        pts1 = np.float32([G.nodes[u]['kps'][m.queryIdx].pt for m in edge_data['matches']])  # p2d in matches of image u
+        pts2 = np.float32([G.nodes[v]['kps'][m.trainIdx].pt for m in edge_data['matches']])  # p2d in matches of image v
+
+        # initialize camera pose with Essential Matrix Decomposition
+        _, R, T, mask = cv2.recoverPose(edge_data['E'], pts1, pts2, K)
+        H1 = np.eye(4)  # build the coord on the first Image  # (3, 4)
+        H2 = H_from_RT(R, T)  # (3, 4)
+        M1, M2 = K @ H1[:3], K @ H2[:3]
+
+        X3d_E, mask = triangulate_edge(pts1, pts2, K, H1, H2)
 
         # calculate the median angle, select the best edge to initialize.
         O1 = -np.linalg.inv(M1[:, :3]) @ M1[:, 3]
@@ -149,6 +162,7 @@ def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05)
     # Data Structure of Triangulation
     pts1 = []
     pts2 = []
+    pairs_constructed = []
     ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
 
     # 对于这条边所有的配对
@@ -173,6 +187,7 @@ def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05)
             # New Construction, new 3d point
             pts1.append(G.nodes[u]['kps'][i].pt)
             pts2.append(G.nodes[v]['kps'][j].pt)
+            pairs_constructed.append((i, j))
 
     # 如果没有足够的三维点-二维点对用于解算PnP（少于6对），则直接结束，因为没有解算的相机位姿提供给三角化，将没有办法继续添加新产生的三维点
     if len(pt3ds['left']) < 6 or len(pt3ds['right']) < 6:  # not enough points to PnP
@@ -189,8 +204,11 @@ def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05)
 
     # 如果存在没有被重建的多余的匹配点，就将他们三角化，添加到重建好的三维点集中
     if len(pts2) > 0 and len(pts1) > 0:
-        M1, M2, H1, H2, X3d_new, visible_mask = (
-            triangulate_edge(G, K, (u, v), H1=H_from_rtvec(r_l, t_l), H2=H_from_rtvec(r_r, t_r)))
+        H1 = H_from_rtvec(r_l, t_l)
+        H2 = H_from_rtvec(r_r, t_r)
+
+        X3d_new, visible_mask = triangulate_edge(pts1, pts2, K, H1, H2)
+
         X3d_new = X3d_new.T[visible_mask]
         # Register new two Cameras.
         G.nodes[u]['H'] = H1
@@ -198,7 +216,7 @@ def apply_increment(G, K, X3d, increment_mask=None, colors=None, min_ratio=0.05)
 
         # 标记新的三角化出来的三维点的track为“已经被重建出来”
         k = len(X3d)
-        pairs = [(match.queryIdx, match.trainIdx) for (match, available) in zip(G[u][v]['matches'], visible_mask) if available]
+        pairs = [pair for pair, available in zip(pairs_constructed, visible_mask) if available]
         for n, (i, j) in enumerate(pairs):
             mark_edge_constructed(G, (u, v), i, j, n + k)
             if colors is not None:

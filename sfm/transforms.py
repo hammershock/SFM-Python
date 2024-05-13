@@ -30,4 +30,8 @@ def Euler2Homogeneous(points_E):
     return points_H
 
 
+def normalize_homogeneous(points_H):
+    assert points_H.shape[0] == 4 or points_H.shape[0] == 3
+    points_H /= points_H[-1]
+    return points_H
 
