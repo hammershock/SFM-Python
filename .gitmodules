@@ -1,3 +1,6 @@
 [submodule "ImageDataset_SceauxCastle"]
 	path = ImageDataset_SceauxCastle
 	url = git@github.com:openMVG/ImageDataset_SceauxCastle.git
+[submodule "ReconstructionDataSet"]
+	path = ReconstructionDataSet
+	url = git@github.com:rperrot/ReconstructionDataSet.git

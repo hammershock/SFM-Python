@@ -235,7 +235,8 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
     return ret, X3d
 
 
-def apply_bundle_adjustment(G: nx.DiGraph, K, X3d: X3D):
+@timeit
+def apply_bundle_adjustment(G: nx.DiGraph, K, X3d: X3D, tol=1e-10):
     # step 1; build the R_set and C_set
     # R_set, C_set: the pose of all cameras registered, from the vertex of the Graph
     R_set, C_set, node_indices = [], [], []
@@ -249,9 +250,8 @@ def apply_bundle_adjustment(G: nx.DiGraph, K, X3d: X3D):
             node_indices.append(node)
 
     # apply bundle adjustment
-    (optimized_R_set, optimized_C_set), optimized_points_3d, camera_ids = bundle_adjustment(X3d, R_set, C_set, K, node_indices)
+    (optimized_R_set, optimized_C_set), optimized_points_3d, camera_ids = bundle_adjustment(X3d, R_set, C_set, K, node_indices, tol=1e-10)
     X3d.data = optimized_points_3d
     for camera_id, R, T in zip(camera_ids, optimized_R_set, optimized_C_set):
         G.nodes[camera_id]['H'] = H_from_RT(R, T)
-    print(f'completed!')
     return X3d
