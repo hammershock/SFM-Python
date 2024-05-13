@@ -23,7 +23,7 @@ def main(image_dir, calibration_file, use_ba, ba_tol, verbose):
     K = load_calibration_data(calibration_file)
     sfm = SFM(image_dir, K, callback_group={"after_ba": visualize_points3d})
     X3d, colors = sfm.reconstruct(use_ba=use_ba, ba_tol=ba_tol, verbose=verbose)
-    visualize_points3d(X3d, colors)
+    visualize_points3d(X3d, s=1)
 
 
 if __name__ == '__main__':

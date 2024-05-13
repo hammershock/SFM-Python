@@ -23,6 +23,16 @@ def mark_edge_constructed(G, X3d: X3D, edge, i, j, pos3d_index):
         X3d.add_track(pos3d_index, node_idx, feat_idx, x, y)
 
 
+def add_to_color(G, u, v, i, j, colors):
+    n1, n2 = G.nodes[u], G.nodes[v]
+    x1, y1 = np.array(n1["kps"][i].pt, dtype=int)
+    color1 = n1['image'][y1, x1, :]
+    x2, y2 = np.array(n2["kps"][j].pt, dtype=int)
+    color2 = n2['image'][y2, x2, :]
+    color = (color1 + color2) / 2
+    colors.append(color)
+
+
 def generate_edges(G: nx.DiGraph, K, min_matches=80):
     """
     the key of the edge data: E, F, matches, mask
@@ -43,7 +53,8 @@ def generate_edges(G: nx.DiGraph, K, min_matches=80):
             F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_RANSAC, 0.1, 0.99)
             inlier_matches = [good_matches[i] for i in range(len(mask)) if mask[i]]
             if len(inlier_matches) > min_matches:
-                G.add_edge(i, j, F=F, E=K.T @ F @ K, matches=inlier_matches, mask=mask)
+                pairs = np.array([(m.queryIdx, m.trainIdx) for m in inlier_matches])
+                G.add_edge(i, j, F=F, E=K.T @ F @ K, pairs=pairs, mask=mask, matches=inlier_matches)  # use pair
 
     return G
 

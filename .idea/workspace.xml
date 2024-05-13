@@ -10,8 +10,10 @@
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sfm/SFM.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/SFM.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sfm/bundle_adjustment.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/bundle_adjustment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/data_stucture.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/data_stucture.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sfm/depth.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/depth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sfm/graph.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/graph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sfm/pipline.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/pipline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sfm/visualize.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/visualize.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,12 +64,15 @@
     "Python tests.Doctests in ba (4).executor": "Run",
     "Python tests.Doctests in ba.executor": "Run",
     "Python tests.Doctests in io.executor": "Run",
+    "Python.SFM.executor": "Run",
     "Python.app.executor": "Run",
     "Python.ba.executor": "Run",
     "Python.bundle_adjustment.executor": "Run",
+    "Python.depth.executor": "Run",
     "Python.graph.executor": "Run",
     "Python.io.executor": "Run",
     "Python.main.executor": "Run",
+    "Python.pipline.executor": "Run",
     "Python.test.executor": "Run",
     "Python.utils.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -87,6 +92,29 @@
     </key>
   </component>
   <component name="RunManager" selected="Python.main">
+    <configuration name="SFM" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SFM_Python" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/sfm" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sfm/SFM.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="app" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="SFM_Python" />
       <option name="ENV_FILES" value="" />
@@ -110,7 +138,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="ba" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="depth" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="SFM_Python" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -124,30 +152,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sfm/ba.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="bundle_adjustment" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="SFM_Python" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/sfm" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sfm/bundle_adjustment.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sfm/depth.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -179,7 +184,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="pipline" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="SFM_Python" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -188,12 +193,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/sfm" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sfm/pipline.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -205,10 +210,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.pipline" />
+        <item itemvalue="Python.SFM" />
+        <item itemvalue="Python.depth" />
         <item itemvalue="Python.app" />
-        <item itemvalue="Python.test" />
-        <item itemvalue="Python.bundle_adjustment" />
-        <item itemvalue="Python.ba" />
       </list>
     </recent_temporary>
   </component>
@@ -235,7 +240,8 @@
       <workItem from="1715399027391" duration="26191000" />
       <workItem from="1715510737200" duration="8662000" />
       <workItem from="1715565802127" duration="20427000" />
-      <workItem from="1715589998581" duration="17007000" />
+      <workItem from="1715589998581" duration="24955000" />
+      <workItem from="1715622865217" duration="5617000" />
     </task>
     <servers />
   </component>
@@ -243,23 +249,26 @@
     <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/SFM_Python$app.coverage" NAME="app Coverage Results" MODIFIED="1715613009336" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SFM_Python$app.coverage" NAME="app Coverage Results" MODIFIED="1715616938140" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SFM_Python$io.coverage" NAME="io Coverage Results" MODIFIED="1715315741413" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctest_extract_2D_points.coverage" NAME="Doctest extract_2D_points Coverage Results" MODIFIED="1715568649466" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
-    <SUITE FILE_PATH="coverage/SFM_Python$Doctest_load_calibration_data.coverage" NAME="Doctest load_calibration_data Coverage Results" MODIFIED="1715315685850" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$utils.coverage" NAME="utils Coverage Results" MODIFIED="1715352087649" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
+    <SUITE FILE_PATH="coverage/SFM_Python$Doctest_load_calibration_data.coverage" NAME="Doctest load_calibration_data Coverage Results" MODIFIED="1715315685850" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctest_find_visible_points.coverage" NAME="Doctest find_visible_points Coverage Results" MODIFIED="1715567180872" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$graph.coverage" NAME="graph Coverage Results" MODIFIED="1715415817812" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctests_in_ba__1_.coverage" NAME="Doctests in ba (1) Coverage Results" MODIFIED="1715569904277" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctests_in_ba__2_.coverage" NAME="Doctests in ba (2) Coverage Results" MODIFIED="1715570641722" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctests_in_ba.coverage" NAME="Doctests in ba Coverage Results" MODIFIED="1715570929505" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctests_in_ba__3_.coverage" NAME="Doctests in ba (3) Coverage Results" MODIFIED="1715569460404" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
-    <SUITE FILE_PATH="coverage/SFM_Python$main.coverage" NAME="main Coverage Results" MODIFIED="1715612228997" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SFM_Python$SFM.coverage" NAME="SFM Coverage Results" MODIFIED="1715621378652" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
+    <SUITE FILE_PATH="coverage/SFM_Python$main.coverage" NAME="main Coverage Results" MODIFIED="1715627904085" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctests_in_io.coverage" NAME="Doctests in io Coverage Results" MODIFIED="1715315708258" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$ba.coverage" NAME="ba Coverage Results" MODIFIED="1715570960913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$bundle_adjustment.coverage" NAME="bundle_adjustment Coverage Results" MODIFIED="1715571562649" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
+    <SUITE FILE_PATH="coverage/SFM_Python$depth.coverage" NAME="depth Coverage Results" MODIFIED="1715618085778" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctest_get2DPoints.coverage" NAME="Doctest get2DPoints Coverage Results" MODIFIED="1715529370504" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$test.coverage" NAME="test Coverage Results" MODIFIED="1715594177225" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SFM_Python$pipline.coverage" NAME="pipline Coverage Results" MODIFIED="1715627425522" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctest_get_camera_and_point_indices.coverage" NAME="Doctest get_camera_and_point_indices Coverage Results" MODIFIED="1715569031128" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctests_in_ba__4_.coverage" NAME="Doctests in ba (4) Coverage Results" MODIFIED="1715569656559" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
   </component>

@@ -17,7 +17,7 @@ from .cache_utils import memory, serialize_graph, restore_graph
 from .metrics import calc_angle
 from .structure import triangulate_edge
 from .utils import timeit
-from .transforms import H_from_rtvec, H_from_RT
+from .transforms import H_from_rtvec, H_from_RT, RT_from_H
 from .bundle_adjustment import bundle_adjustment
 
 
@@ -38,7 +38,9 @@ def build_graph_(image_dir, K):
             filepath = os.path.join(image_dir, filename)
             image = cv2.imread(filepath)
             kps, desc = extract_sift(image)
-            G.add_node(idx, kps=kps, desc=desc, image=image, constructed={})
+            pts = np.array([kp.pt for kp in kps])
+            colors = np.array([image[y, x] for x, y in pts.astype(int)])
+            G.add_node(idx, kps=kps, desc=desc, image=image, constructed={}, pts=pts, colors=colors)
 
     # generate edges
     G = generate_edges(G, K)
@@ -50,7 +52,6 @@ def build_graph_(image_dir, K):
 def compute_tracks(G: nx.DiGraph, min_track_len=3) -> nx.DiGraph:
     """
     created node_data["tracks"] (dict[set[tuple[int, int]])
-
     created edge_data["tracks"] (dict[set[tuple[int, int]]])
     create edge_data["mask_enough_tracks"] (np.array)
     """
@@ -63,25 +64,14 @@ def compute_tracks(G: nx.DiGraph, min_track_len=3) -> nx.DiGraph:
         # compute the track of key points of the vertex ...
         for neighbor in G.neighbors(node):  # from the matches with its neighbours
             edge_data = G[node][neighbor]
-            for match in edge_data['matches']:
-                assert isinstance(match, cv2.DMatch)
-                i, j = match.queryIdx, match.trainIdx
+            for i, j in edge_data["pairs"]:
                 node_data['tracks'][i].add((neighbor, j))
                 G.nodes[neighbor]['tracks'][j].add((node, i))
 
     # step 2: compute the track of edges
     for u, v, data in G.edges(data=True):
         n1, n2 = G.nodes[u], G.nodes[v]
-        data["tracks"] = {}
-
-        # 具有足够长度的轨迹track
-        data["mask_enough_tracks"] = np.zeros(len(data["matches"]), dtype=bool)
-        for n, match in enumerate(data['matches']):
-            assert isinstance(match, cv2.DMatch)
-            i, j = match.queryIdx, match.trainIdx
-            data["tracks"][(i, j)] = n1['tracks'][i] | n2['tracks'][j]
-            if len(data["tracks"][(i, j)]) >= min_track_len:
-                data["mask_enough_tracks"][n] = True
+        data["tracks"] = {(i, j): n1['tracks'][i] | n2['tracks'][j] for i, j in data["pairs"]}
 
     return G
 
@@ -91,10 +81,11 @@ def initial_register(G, K) -> X3D:
     def mid_angle(edge):
         u, v = edge
         edge_data = G[u][v]
+        n1, n2 = G.nodes[u], G.nodes[v]
 
         # Essential Matrix Decomposition.
-        pts1 = np.float32([G.nodes[u]['kps'][m.queryIdx].pt for m in edge_data['matches']])  # p2d in matches of image u
-        pts2 = np.float32([G.nodes[v]['kps'][m.trainIdx].pt for m in edge_data['matches']])  # p2d in matches of image v
+        pts1 = np.array([n1['pts'][i] for i, _ in edge_data["pairs"]])
+        pts2 = np.array([n2['pts'][j] for _, j in edge_data["pairs"]])
 
         # initialize camera pose with Essential Matrix Decomposition
         _, R, T, mask = cv2.recoverPose(edge_data['E'], pts1, pts2, K)
@@ -115,122 +106,102 @@ def initial_register(G, K) -> X3D:
         return angle, H1, H2, X3d_E, mask, edge
 
     # choose the best edge from the Graph according to the median angle...
-    angle, H1, H2, points3d, mask, (u, v) = min((mid_angle(edge) for edge in G.edges), key=lambda x: x[0])
+    angle, H1, H2, points3d, mask, edge = min((mid_angle(edge) for edge in G.edges), key=lambda x: x[0])
 
     assert angle < 60, 'failed to find an edge to init.'
     logging.info(f'Initial Register Complete! medium angle: {angle}')
-
-    # Register Initial two Cameras.登记初始两个相机的位姿
-    G.nodes[u]['H'] = H1
-    G.nodes[v]['H'] = H2
-
+    u, v = edge
     edge_data = G[u][v]
-    # 标记这个边为：已经使用过
-    edge_data['dirty'] = True  # this edge has been used!
+    n1, n2 = G.nodes[u], G.nodes[v]
 
+    # Initial 3D points
     X3d = X3D(G)
-    # 对两幅图像的所有成功重建的匹配点，标记他们的track为：已被重建过
-    pairs = [(match.queryIdx, match.trainIdx) for match, available in zip(edge_data['matches'], mask) if available]
-    colors = []
+
+    # register cameras
+    n1['H'] = H1
+    n2['H'] = H2
+
+    # mark this edge has been used.
+    edge_data['dirty'] = True
+
+    # mark rebuilt
+    pairs = edge_data["pairs"][mask]
+
     for n, (i, j) in enumerate(pairs):
-        mark_edge_constructed(G, X3d, (u, v), i, j, n)
-        add_to_color(G, u, v, i, j, colors)
+        for cam_id, feat_idx in edge_data["tracks"][(i, j)]:
+            G.nodes[cam_id]["constructed"][feat_idx] = n
+            x, y = G.nodes[cam_id]['pts'][feat_idx]
+            X3d.add_track(n, cam_id, feat_idx, x, y)
 
     X3d.add_points(points3d.T[mask])
-    X3d.add_colors(colors)
     return X3d
-
-
-def add_to_color(G, u, v, i, j, colors):
-    n1, n2 = G.nodes[u], G.nodes[v]
-    x1, y1 = np.array(n1["kps"][i].pt, dtype=int)
-    color1 = n1['image'][y1, x1, :]
-    x2, y2 = np.array(n2["kps"][j].pt, dtype=int)
-    color2 = n2['image'][y2, x2, :]
-    color = (color1 + color2) / 2
-    colors.append(color)
 
 
 @timeit
 def apply_increment(G, K, X3d, min_ratio=0.05):
-    # select the best edge to begin.
+    # Select the best edge to begin.
     u, v, ratio = select_edge(G)
-    print(f'choose {(u, v)}, votes: {ratio}')
+    edge_data = G[u][v]
+    n1, n2 = G.nodes[u], G.nodes[v]
+    logging.info(f'choose {(u, v)}, votes: {ratio}')
 
-    # data structure of PnP
-    pt3ds = {'left': [], 'right': []}
-    pt2ds = {'left': [], 'right': []}
+    # Masks for constructed points
+    left_visible_mask = np.array([i in n1['constructed'] for i, _ in edge_data["pairs"]])
+    right_visible_mask = np.array([j in n2['constructed'] for _, j in edge_data["pairs"]])
 
-    # Data Structure of Triangulation
-    pts1 = []
-    pts2 = []
-    pairs_constructed = []
-    ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
+    left_2d_indices = np.array([i for i, _ in edge_data["pairs"][left_visible_mask]])
+    right_2d_indices = np.array([j for _, j in edge_data["pairs"][right_visible_mask]])
 
-    # 对于这条边所有的配对
-    for match in G[u][v]['matches']:
-        i, j = match.queryIdx, match.trainIdx
+    pt2ds = {
+        'left': n1['pts'][left_2d_indices],
+        'right': n2['pts'][right_2d_indices]
+    }
 
-        pt3d_left_idx = G.nodes[u]['constructed'].get(i, None)
-        pt3d_right_idx = G.nodes[v]['constructed'].get(j, None)
+    left_3d_indices = np.array([n1['constructed'][i] for i, _ in edge_data["pairs"][left_visible_mask]])
+    right_3d_indices = np.array([n2['constructed'][j] for _, j in edge_data["pairs"][right_visible_mask]])
 
-        # 检查左侧点是否被重建过，如果三维坐标已经存在，则可以用于解算左相机位姿
-        if pt3d_left_idx is not None:
-            pt3ds['left'].append(X3d[pt3d_left_idx])
-            pt2ds['left'].append(G.nodes[u]['kps'][i].pt)
+    pt3ds = {
+        'left': X3d.data[left_3d_indices],
+        'right': X3d.data[right_3d_indices]
+    }
 
-        # 检查右侧点是否已经被重建过，如果三维坐标已经存在，则可以用于解算右相机位姿
-        if pt3d_right_idx is not None:
-            pt3ds['right'].append(X3d[pt3d_right_idx])
-            pt2ds['right'].append(G.nodes[v]['kps'][j].pt)
-
-        # 在这里将其他匹配点三角化，补充新的三维点
-        if pt3d_left_idx is None and pt3d_right_idx is None:
-            # New Construction, new 3d point
-            pts1.append(G.nodes[u]['kps'][i].pt)
-            pts2.append(G.nodes[v]['kps'][j].pt)
-            pairs_constructed.append((i, j))
-
-    # 如果没有足够的三维点-二维点对用于解算PnP（少于6对），则直接结束，因为没有解算的相机位姿提供给三角化，将没有办法继续添加新产生的三维点
-    if len(pt3ds['left']) < 6 or len(pt3ds['right']) < 6:  # not enough points to PnP
-        G[u][v]['dirty'] = True  # This edge has been used! # 不要忘记标记这个边已经用过了不能重复使用
+    # If not enough points for PnP
+    if len(pt3ds['left']) < 6 or len(pt3ds['right']) < 6:
+        G[u][v]['dirty'] = True
         ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
         return ret, X3d
 
-    # 这里使用PnP解算出左右两个相机的位姿
-    retval1, r_l, t_l = cv2.solvePnP(np.array(pt3ds['left']), np.array(pt2ds['left']), K, np.zeros((1, 5)))
-    retval2, r_r, t_r = cv2.solvePnP(np.array(pt3ds['right']), np.array(pt2ds['right']), K, np.zeros((1, 5)))
+    # Solve PnP
+    retval1, r_l, t_l = cv2.solvePnP(pt3ds['left'], pt2ds['left'], K, np.zeros((1, 5)))
+    retval2, r_r, t_r = cv2.solvePnP(pt3ds['right'], pt2ds['right'], K, np.zeros((1, 5)))
 
-    # 将解出来的位姿用于三角化，添加新的三维点
-    pts1 = np.array(pts1)
-    pts2 = np.array(pts2)
+    # New construction
+    mask = ~(left_visible_mask | right_visible_mask)
+    pairs_constructed = np.array(edge_data['pairs'])[mask]
+    left_unconstructed_indices = np.array([i for i, _ in pairs_constructed])
+    right_unconstructed_indices = np.array([j for _, j in pairs_constructed])
+    pt2d1 = n1['pts'][left_unconstructed_indices]
+    pt2d2 = n2['pts'][right_unconstructed_indices]
 
-    # 如果存在没有被重建的多余的匹配点，就将他们三角化，添加到重建好的三维点集中
-    if len(pts2) > 0 and len(pts1) > 0:
+    # Triangulate new 3D points
+    if len(pt2d1) > 0 and len(pt2d2) > 0:
         H1 = H_from_rtvec(r_l, t_l)
         H2 = H_from_rtvec(r_r, t_r)
 
-        X3d_new, visible_mask = triangulate_edge(pts1, pts2, K, H1, H2)
-
+        X3d_new, visible_mask = triangulate_edge(pt2d1, pt2d2, K, H1, H2)
         X3d_new = X3d_new.T[visible_mask]
-        # Register new two Cameras.
+
+        # Register new cameras
         G.nodes[u]['H'] = H1
         G.nodes[v]['H'] = H2
 
-        # 标记新的三角化出来的三维点的track为“已经被重建出来”
+        # Mark new triangulated 3D points as constructed
         k = len(X3d)
-        pairs = [pair for pair, available in zip(pairs_constructed, visible_mask) if available]
-
-        colors = []
-        for n, (i, j) in enumerate(pairs):
+        for n, (i, j) in enumerate(pairs_constructed[visible_mask]):
             mark_edge_constructed(G, X3d, (u, v), i, j, n + k)
-            add_to_color(G, u, v, i, j, colors)
 
-        # 将新的三维点附加在原来的后面
         X3d.add_points(X3d_new)
-        X3d.add_colors(colors)
-
-        G[u][v]['dirty'] = True  # This edge has been used!
+        G[u][v]['dirty'] = True
     else:
         warnings.warn('no more point3ds added...')
 
@@ -240,21 +211,13 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
 
 @timeit
 def apply_bundle_adjustment(G: nx.DiGraph, K, X3d: X3D, tol=1e-10, verbose=0):
-    # step 1; build the R_set and C_set
     # R_set, C_set: the pose of all cameras registered, from the vertex of the Graph
-    R_set, C_set, node_indices = [], [], []
-    for node, data in G.nodes(data=True):  # check if the node is registered
-        H = data.get('H')  # with shape 4 * 4
-        if H is not None:
-            R = H[:3, :3]
-            T = H[:3, 3:]
-            R_set.append(R)
-            C_set.append(T)
-            node_indices.append(node)
+    registered_nodes = [node for node, data in G.nodes(data=True) if 'H' in data]
+    R_set, C_set = zip(*[RT_from_H(G.nodes[node]['H']) for node in registered_nodes])
 
     # apply bundle adjustment
-    (optimized_R_set, optimized_C_set), optimized_points_3d, camera_ids = bundle_adjustment(X3d, R_set, C_set, K, node_indices, tol=tol, verbose=verbose)
-    X3d.data = optimized_points_3d
+    (optimized_R_set, optimized_C_set), X3d.data, camera_ids = bundle_adjustment(X3d, R_set, C_set, K, registered_nodes, tol=tol, verbose=verbose)
+
     for camera_id, R, T in zip(camera_ids, optimized_R_set, optimized_C_set):
         G.nodes[camera_id]['H'] = H_from_RT(R, T)
     return X3d

@@ -3,7 +3,7 @@ from scipy.sparse import lil_matrix
 from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation as Rot
 
-from sfm.data_stucture import X3D
+from .data_stucture import X3D
 
 
 def find_visible_points(X_found, filtered_feature_flag, nCam):

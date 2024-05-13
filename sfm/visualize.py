@@ -26,7 +26,7 @@ def visualize_edge(G, u, v):
 color_map = {}
 
 
-def visualize_points3d(points3d, colors=None, color_indices=None):
+def visualize_points3d(points3d, colors=None, color_indices=None, s=10):
     points3d = np.array(points3d)
     assert points3d.shape[1] == 3, "Input should be a Nx3 numpy array"
     if colors is not None:
@@ -46,13 +46,13 @@ def visualize_points3d(points3d, colors=None, color_indices=None):
         for idx in unique_indices:
             idx_mask = color_indices == idx
             ax.scatter(points3d[idx_mask, 0], points3d[idx_mask, 1], points3d[idx_mask, 2],
-                       color=color_map[idx], label=f"Index {idx}")
+                       color=color_map[idx], label=f"Index {idx}", s=s)
     elif colors is not None:
         # Convert BGR to RGB
         colors_rgb = colors[:, [2, 1, 0]] / 255.
-        ax.scatter(points3d[:, 0], points3d[:, 1], points3d[:, 2], color=colors_rgb)
+        ax.scatter(points3d[:, 0], points3d[:, 1], points3d[:, 2], color=colors_rgb, s=s)
     else:
-        ax.scatter(points3d[:, 0], points3d[:, 1], points3d[:, 2])
+        ax.scatter(points3d[:, 0], points3d[:, 1], points3d[:, 2], s=s)
 
     # Labeling the axes
     ax.set_xlabel('X')

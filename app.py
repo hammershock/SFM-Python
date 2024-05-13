@@ -18,11 +18,15 @@ class StdoutRedirector(object):
     def flush(self):
         pass
 
+
 class SFMApplication:
     def __init__(self, master):
         self.master = master
         self.thread = None
         self.thread_running = False
+        self.plot_window = None  # 新窗口
+        self.canvas = None  # 画布初始化
+
         master.title("SFM Reconstruction GUI")
 
         # Set up the GUI
@@ -80,20 +84,31 @@ class SFMApplication:
         finally:
             self.thread_running = False
 
+    def stop_thread(self):
+        if self.thread_running and self.thread.is_alive():
+            # 这里可以设置一个标志，通知线程停止
+            self.thread_running = False
+            self.thread.join()  # 等待线程结束
+
     def plot_results(self, X3d, colors):
-        new_window = Toplevel(self.master)
-        new_window.title("Reconstruction Results")
-        canvas = FigureCanvasTkAgg(self.fig, new_window)
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        if self.plot_window is None or not self.plot_window.winfo_exists():
+            self.plot_window = Toplevel(self.master)
+            self.plot_window.title("Reconstruction Results")
+            self.canvas = FigureCanvasTkAgg(self.fig, self.plot_window)
+            self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        else:
+            self.fig.clear()
+
         ax = self.fig.add_subplot(111, projection='3d')
         ax.scatter(X3d[:, 0], X3d[:, 1], X3d[:, 2], c=colors/255.0)
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        canvas.draw()
+        self.canvas.draw()
 
 
 if __name__ == '__main__':
     root = tk.Tk()
+    root.resizable(False, False)
     app = SFMApplication(root)
     root.mainloop()
