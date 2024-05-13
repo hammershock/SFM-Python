@@ -14,14 +14,24 @@ scipy
 @author: Hanmo Zhang
 @email: zhanghanmo@bupt.edu.cn
 """
+import argparse
 from sfm import load_calibration_data, SFM
 from sfm.visualize import visualize_edge, visualize_points3d, visualize_graph
 
 
-if __name__ == '__main__':
-    # 将提取到的特征点以cv2.KeyPoint列表的形式存放在图的结点上，将过滤后的匹配cv2.DMatch列表，还有计算得到的本质矩阵E，基础矩阵F，存放在图的边上。
-    K = load_calibration_data('./ImageDataset_SceauxCastle/images/K.txt')  #  "./observatory_dslr_jpg/observatory/dslr_calibration_jpg/K.txt"
-    sfm = SFM('./ImageDataset_SceauxCastle/images', K)  # "./observatory_dslr_jpg/observatory/images/dslr_images"
-    X3d, colors = sfm.reconstruct(use_ba=True)
-    visualize_points3d(X3d)
+def main(image_dir, calibration_file, use_ba, ba_tol):
+    K = load_calibration_data(calibration_file)
+    sfm = SFM(image_dir, K)
+    X3d, colors = sfm.reconstruct(use_ba=use_ba, ba_tol=ba_tol)
+    visualize_points3d(X3d, colors)
 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Run SFM reconstruction on a set of images.")
+    parser.add_argument('image_dir', type=str, help='Directory containing images for reconstruction.')
+    parser.add_argument('calibration_file', type=str, help='File containing camera calibration data.')
+    parser.add_argument('--use_ba', type=bool, default=True, help='Whether to use bundle adjustment. Default is True.')
+    parser.add_argument('--ba_tol', type=float, default=1e-10, help='Tolerance for bundle adjustment. Default is 1e-10.')
+
+    args = parser.parse_args()
+    main(args.image_dir, args.calibration_file, args.use_ba, args.ba_tol)

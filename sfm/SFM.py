@@ -10,14 +10,15 @@ class SFM(object):
         self.G = build_graph(image_dir, K)
         self.G = compute_tracks(self.G)
 
-    def reconstruct(self, use_ba=False):
+    def reconstruct(self, use_ba=False, ba_tol=1e-10):
         X3d = initial_register(self.G, self.K)  # (N, 3)
 
         while True:
             ret, X3d = apply_increment(self.G, self.K, X3d, min_ratio=0.05)
             # visualize_points3d(X3d.data, color_indices=X3d.increment_mask)
-            if use_ba: X3d = apply_bundle_adjustment(self.G, self.K, X3d, tol=1e-10)
-            visualize_points3d(X3d.data, colors=X3d.colors)
+            if use_ba:
+                X3d = apply_bundle_adjustment(self.G, self.K, X3d, tol=ba_tol)
+                visualize_points3d(X3d.data, colors=X3d.colors)
             if not ret: break
 
         print(f'reconstruct done!')
