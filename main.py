@@ -28,9 +28,9 @@ def main(image_dir, calibration_file, use_ba, ba_tol):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Run SFM reconstruction on a set of images.")
-    parser.add_argument('image_dir', type=str, help='Directory containing images for reconstruction.')
-    parser.add_argument('calibration_file', type=str, help='File containing camera calibration data.')
-    parser.add_argument('--use_ba', type=bool, default=True, help='Whether to use bundle adjustment. Default is True.')
+    parser.add_argument('image_dir', type=str, default="./ImageDataset_SceauxCastle/images", help='Directory containing images for reconstruction.')
+    parser.add_argument('calibration_file', type=str, default="./ImageDataset_SceauxCastle/images/K.txt", help='File containing camera calibration data.')
+    parser.add_argument('--use_ba', type=bool, default=False, help='Whether to use bundle adjustment. Default is False.')
     parser.add_argument('--ba_tol', type=float, default=1e-10, help='Tolerance for bundle adjustment. Default is 1e-10.')
 
     args = parser.parse_args()
