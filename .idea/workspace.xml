@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2fb00905-7343-4dc2-87ef-5ebf66f91893" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/bundle_adjustment.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/bundle_adjustment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/data_stucture.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/data_stucture.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/pipline.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm/pipline.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -238,7 +234,7 @@
       <workItem from="1715565802127" duration="20427000" />
       <workItem from="1715589998581" duration="24955000" />
       <workItem from="1715622865217" duration="5643000" />
-      <workItem from="1715653252578" duration="15456000" />
+      <workItem from="1715653252578" duration="16166000" />
     </task>
     <servers />
   </component>

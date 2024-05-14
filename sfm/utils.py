@@ -1,5 +1,4 @@
 import datetime
-import time
 
 
 def timeit(func):

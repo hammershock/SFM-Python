@@ -17,7 +17,7 @@ from .cache_utils import memory, serialize_graph, restore_graph
 from .metrics import calc_angle
 from .structure import triangulate_edge
 from .utils import timeit
-from .transforms import H_from_rtvec, H_from_RT, RT_from_H
+from .transforms import H_from_rtvec, H_from_RT
 from .bundle_adjustment import bundle_adjustment
 
 
@@ -216,7 +216,6 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
 
 @timeit
 def apply_bundle_adjustment(G: nx.DiGraph, K, X3d: X3D, tol=1e-10, verbose=0):
-    # R_set, T_set: the pose of all cameras registered, from the vertex of the Graph
     # apply bundle adjustment
     bundle_adjustment(G, X3d, K, tol=tol, verbose=verbose)
 

@@ -9,7 +9,7 @@ matplotlib
 joblib
 tqdm
 networkx
-scipy
+scipy(for Bundle Adjustment)
 
 @author: Hanmo Zhang
 @email: zhanghanmo@bupt.edu.cn
