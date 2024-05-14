@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--calibration_file', type=str, default="./ImageDataset_SceauxCastle/images/K.txt", help='File containing camera calibration data.')
     parser.add_argument('--use_ba', action='store_true', help='Whether to use bundle adjustment. Default is False.')
     parser.add_argument('--ba_tol', type=float, default=1e-10, help='Tolerance for bundle adjustment. Default is 1e-10.')
-    parser.add_argument('--verbose', type=int, default=1, help='Verbose of output. Default is 1.')
+    parser.add_argument('--verbose', type=int, default=0, help='Verbose of output. Default is 0.')
 
     args = parser.parse_args()
     main(args.image_dir, args.calibration_file, args.use_ba, args.ba_tol, args.verbose)

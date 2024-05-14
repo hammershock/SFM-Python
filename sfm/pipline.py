@@ -72,6 +72,7 @@ def compute_tracks(G: nx.DiGraph, min_track_len=3) -> nx.DiGraph:
     for u, v, data in G.edges(data=True):
         n1, n2 = G.nodes[u], G.nodes[v]
         data["tracks"] = {(i, j): n1['tracks'][i] | n2['tracks'][j] for i, j in data["pairs"]}
+        # filter tracks
 
     return G
 
@@ -120,11 +121,12 @@ def initial_register(G, K) -> X3D:
     # register cameras
     n1['H'] = H1
     n2['H'] = H2
-
+    n1['base'] = True
     # mark this edge has been used.
     edge_data['dirty'] = True
 
     # mark rebuilt
+    mask_enough_tracks = np.array([len(edge_data["tracks"][(i, j)]) >= 3 for i, j in edge_data["pairs"]])
     pairs = edge_data["pairs"][mask]
 
     for n, (i, j) in enumerate(pairs):
@@ -152,6 +154,12 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
     left_2d_indices = np.array([i for i, _ in edge_data["pairs"][left_visible_mask]])
     right_2d_indices = np.array([j for _, j in edge_data["pairs"][right_visible_mask]])
 
+    # If not enough points for PnP
+    if len(left_2d_indices) < 6 or len(right_2d_indices) < 6:
+        G[u][v]['dirty'] = True
+        ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
+        return ret, X3d
+
     pt2ds = {
         'left': n1['pts'][left_2d_indices],
         'right': n2['pts'][right_2d_indices]
@@ -164,12 +172,6 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
         'left': X3d.data[left_3d_indices],
         'right': X3d.data[right_3d_indices]
     }
-
-    # If not enough points for PnP
-    if len(pt3ds['left']) < 6 or len(pt3ds['right']) < 6:
-        G[u][v]['dirty'] = True
-        ret = not (all(G[u][v].get('dirty') for u, v in G.edges) or ratio < min_ratio)
-        return ret, X3d
 
     # Solve PnP
     retval1, r_l, t_l = cv2.solvePnP(pt3ds['left'], pt2ds['left'], K, np.zeros((1, 5)))
@@ -195,9 +197,12 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
         G.nodes[u]['H'] = H1
         G.nodes[v]['H'] = H2
 
+        mask_enough_tracks = np.array([len(edge_data["tracks"][(i, j)]) >= 3 for i, j in pairs_constructed])
+        pairs = pairs_constructed[visible_mask]
+
         # Mark new triangulated 3D points as constructed
         k = len(X3d)
-        for n, (i, j) in enumerate(pairs_constructed[visible_mask]):
+        for n, (i, j) in enumerate(pairs):
             mark_edge_constructed(G, X3d, (u, v), i, j, n + k)
 
         X3d.add_points(X3d_new)
@@ -211,13 +216,8 @@ def apply_increment(G, K, X3d, min_ratio=0.05):
 
 @timeit
 def apply_bundle_adjustment(G: nx.DiGraph, K, X3d: X3D, tol=1e-10, verbose=0):
-    # R_set, C_set: the pose of all cameras registered, from the vertex of the Graph
-    registered_nodes = [node for node, data in G.nodes(data=True) if 'H' in data]
-    R_set, C_set = zip(*[RT_from_H(G.nodes[node]['H']) for node in registered_nodes])
-
+    # R_set, T_set: the pose of all cameras registered, from the vertex of the Graph
     # apply bundle adjustment
-    (optimized_R_set, optimized_C_set), X3d.data, camera_ids = bundle_adjustment(X3d, R_set, C_set, K, registered_nodes, tol=tol, verbose=verbose)
+    bundle_adjustment(G, X3d, K, tol=tol, verbose=verbose)
 
-    for camera_id, R, T in zip(camera_ids, optimized_R_set, optimized_C_set):
-        G.nodes[camera_id]['H'] = H_from_RT(R, T)
     return X3d

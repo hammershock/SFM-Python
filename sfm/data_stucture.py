@@ -29,22 +29,22 @@ class X3D:
     def add_track(self, x3d_index, camera_id, feature_id, x, y):
         self._tree[x3d_index].append((camera_id, feature_id, x, y))
 
-    def points2d(self):
-        pt2Ds = []
+    def points2d(self, registered_cameras):
+        point_2ds = []
         camera_indices = []
-        points_indices = []
+        point_3d_indices = []
 
         for idx, track_lst in self._tree.items():
             for cam_id, feature_id, x, y in track_lst:
-                if self.G.nodes[cam_id].get('H') is not None:
-                    pt2Ds.append(np.array([x, y]))
+                if cam_id in registered_cameras:
+                    point_2ds.append(np.array([x, y]))
                     camera_indices.append(cam_id)
-                    points_indices.append(idx)
+                    point_3d_indices.append(idx)
 
-        pt2Ds = np.array(pt2Ds)
+        point_2ds = np.array(point_2ds)
         camera_indices = np.array(camera_indices)
-        points_indices = np.array(points_indices)
-        return pt2Ds, camera_indices, points_indices
+        point_3d_indices = np.array(point_3d_indices)
+        return point_2ds, camera_indices, point_3d_indices
 
     def __getitem__(self, item):
         return self.data[item]
