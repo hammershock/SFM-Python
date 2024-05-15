@@ -18,6 +18,7 @@ class Node:
         self.H = np.zeros((4, 4))
         self.registered = False
         self.image = None
+        self.image_color = None
         self.is_initial_camera = False
 
         # {feat_idx: {(camera1_idx, feat_idx)}}
@@ -33,6 +34,7 @@ class Node:
 
     def load_image(self, image_path, extractor):
         self.image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        self.image_color = cv2.imread(image_path)
         kps, self.desc = extractor.detectAndCompute(self.image, None)
         self.pts = np.array([kp.pt for kp in kps])
 
@@ -100,9 +102,11 @@ class Edge:
 
         for m, (i, j) in enumerate(pairs):
             for cam_id, feat_idx in self.tracks[(i, j)]:  # feat -> pt3d
-                self.parent[cam_id].feat2point_index[feat_idx] = m + k
-                x, y = self.parent[cam_id].pts[feat_idx].astype(int)
+                node = self.parent[cam_id]
+                node.feat2point_index[feat_idx] = m + k
+                x, y = node.pts[feat_idx].astype(int)
                 self.parent.tracks[m + k].append((cam_id, feat_idx, x, y))
+                self.parent.color_tree[m + k].append(node.image_color[y, x])
 
         self.parent.X3d = np.vstack((self.parent.X3d, new_X3d))
         self.parent.increment_mask.extend([Edge.n_constructed] * len(new_X3d))
@@ -116,6 +120,7 @@ class Graph:
 
         self.X3d = np.empty((0, 3))
         self.increment_mask = []
+        self.color_tree = defaultdict(list)
         self.tracks = defaultdict(list)
         self.initial_cam = None
 
@@ -159,3 +164,9 @@ class Graph:
     def nodes(self):
         for node, data in self._G.nodes(data=True):
             yield data["data"]
+
+    @property
+    def colors(self):
+        assert len(self.X3d) == len(self.color_tree)
+        colors = np.array([np.max(self.color_tree[idx], axis=0) for idx in range(len(self.X3d))])
+        return colors[:, [2, 1, 0]]

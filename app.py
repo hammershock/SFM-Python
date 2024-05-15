@@ -4,7 +4,7 @@ from tkinter import scrolledtext, Toplevel
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import threading
-from sfm import load_calibration_data, SFM
+from sfm_lite import load_calibration_data, SFM
 
 
 class StdoutRedirector(object):
@@ -74,11 +74,11 @@ class SFMApplication:
             print("Loading calibration data...")
             K = load_calibration_data(cal_file)
             print("Initializing SFM...")
-            sfm = SFM(image_dir, K, callback_group={"after_ba": self.plot_results})
+            sfm = SFM(image_dir, K)
             print("Running reconstruction...")
-            X3d, colors = sfm.reconstruct(use_ba=use_ba, ba_tol=ba_tol, verbose=0)
+            sfm.construct(use_ba=use_ba, ba_tol=ba_tol, verbose=0)
             print("Reconstruction completed successfully.")
-            self.master.after(0, self.plot_results, X3d, colors)
+            self.master.after(0, self.plot_results, sfm.graph.X3d, sfm.graph.colors)
         except Exception as e:
             print(f"Error: {str(e)}")
         finally:
@@ -100,7 +100,7 @@ class SFMApplication:
             self.fig.clear()
 
         ax = self.fig.add_subplot(111, projection='3d')
-        ax.scatter(X3d[:, 0], X3d[:, 1], X3d[:, 2], c=colors/255.0)
+        ax.scatter(X3d[:, 0], X3d[:, 1], X3d[:, 2], c=colors/255.0, s=5)
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
