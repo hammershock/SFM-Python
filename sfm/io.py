@@ -25,5 +25,9 @@ def load_calibration_data(txt_path):
     return K
 
 
+def load_image_gray(filepath):
+    return cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+
+
 if __name__ == "__main__":
     load_calibration_data(f'../ImageDataset_SceauxCastle/images/K.txt')

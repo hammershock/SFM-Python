@@ -52,6 +52,7 @@ def generate_edges(G: nx.DiGraph, K, min_matches=80):
             # Estimate Fundamental Matrix
             F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_RANSAC, 0.1, 0.99)
             inlier_matches = [good_matches[i] for i in range(len(mask)) if mask[i]]
+            print(f'RANSAC filtered: {len(inlier_matches)}/{len(good_matches)}/{len(matches)}')
             if len(inlier_matches) > min_matches:
                 pairs = np.array([(m.queryIdx, m.trainIdx) for m in inlier_matches])
                 G.add_edge(i, j, F=F, E=K.T @ F @ K, pairs=pairs, mask=mask, matches=inlier_matches)  # use pair

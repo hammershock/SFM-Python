@@ -17,7 +17,7 @@ from .cache_utils import memory, serialize_graph, restore_graph
 from .metrics import calc_angle
 from .structure import triangulate_edge
 from .utils import timeit
-from .transforms import H_from_rtvec, H_from_RT
+from .transforms import H_from_rtvec, H_from_RT, RT_from_H
 from .bundle_adjustment import bundle_adjustment
 
 
