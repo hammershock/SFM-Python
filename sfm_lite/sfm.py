@@ -40,8 +40,8 @@ class SFM:
         self.K = K
 
     @timeit
-    def construct(self, use_ba=False, ba_tol=1e-10, verbose=2):
-        self.graph = _sfm_build_graph(self.image_dir, self.K, min_matches=80)
+    def construct(self, min_matches=80, use_ba=False, ba_tol=1e-10, verbose=2):
+        self.graph = _sfm_build_graph(self.image_dir, self.K, min_matches=min_matches)
         self.graph = self._build_tracks()  # build tracks
         self._initial_register()  # initial register
 
@@ -81,6 +81,7 @@ class SFM:
                 # Estimate Fundamental Matrix
                 F, inlier_mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_RANSAC, 0.1, 0.99)
                 inlier_pairs = good_pairs[inlier_mask.ravel() > 0]  # inlier good_pairs
+                logging.debug(f'{len(inlier_pairs)}/{len(good_pairs)}/{len(matches)}')
                 if len(inlier_pairs) > min_matches:
                     edge.set_pairs(inlier_pairs, E=K.T @ F @ K, F=F)
                     graph.add_edge(u, v, edge)
@@ -166,7 +167,7 @@ class SFM:
 
         # enough pairs to solve PnP
         if best_score >= 0.05 and len(map1[0]) > 6 and len(map2[0]) > 6:
-            print(f'ratio: {best_score}')
+            logging.debug(f'ratio: {best_score}')
             return best_edge, best_score, map1, map2
 
     def _apply_increment(self, edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r):

@@ -5,29 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2fb00905-7343-4dc2-87ef-5ebf66f91893" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/sfm_lite/bundle_adjustment.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sfm_lite/utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/SFM.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/bundle_adjustment.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/cache_utils.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/data_stucture.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/depth.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/features.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/graph.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/io.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/metrics.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/pipline.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/structure.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/transforms.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm_lite/transforms.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/utils.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm/visualize.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm_lite/visualize.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sfm_lite/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm_lite/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sfm_lite/sfm.py" beforeDir="false" afterPath="$PROJECT_DIR$/sfm_lite/sfm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,7 +73,7 @@
     "Python.utils.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/home/hammer/PycharmProjects/SFM_Python/sfm_lite",
+    "last_opened_file_path": "/home/hammer/PycharmProjects/SFM_Python/yingyangkuaixian",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -105,9 +85,12 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/yingyangkuaixian" />
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/sfm_lite" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/yingyangkuaixian" />
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
@@ -264,7 +247,7 @@
       <workItem from="1715622865217" duration="5643000" />
       <workItem from="1715653252578" duration="20196000" />
       <workItem from="1715681637490" duration="15443000" />
-      <workItem from="1715738871224" duration="27673000" />
+      <workItem from="1715738871224" duration="28920000" />
     </task>
     <servers />
   </component>
@@ -291,7 +274,7 @@
     <SUITE FILE_PATH="coverage/SFM_Python$graph.coverage" NAME="graph Coverage Results" MODIFIED="1715415817812" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$sfm.coverage" NAME="sfm Coverage Results" MODIFIED="1715768669482" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm_lite" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctests_in_ba__3_.coverage" NAME="Doctests in ba (3) Coverage Results" MODIFIED="1715569460404" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
-    <SUITE FILE_PATH="coverage/SFM_Python$main.coverage" NAME="main Coverage Results" MODIFIED="1715769937504" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SFM_Python$main.coverage" NAME="main Coverage Results" MODIFIED="1715770401013" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SFM_Python$ba.coverage" NAME="ba Coverage Results" MODIFIED="1715570960913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$bundle_adjustment.coverage" NAME="bundle_adjustment Coverage Results" MODIFIED="1715571562649" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
     <SUITE FILE_PATH="coverage/SFM_Python$Doctest_get2DPoints.coverage" NAME="Doctest get2DPoints Coverage Results" MODIFIED="1715529370504" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/sfm" />
