@@ -1,9 +1,11 @@
 import sys
+import time
 import tkinter as tk
 from tkinter import scrolledtext, Toplevel
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import threading
+
 from sfm_lite import load_calibration_data, SFM
 
 
@@ -76,9 +78,10 @@ class SFMApplication:
             print("Initializing SFM...")
             sfm = SFM(image_dir, K)
             print("Running reconstruction...")
-            sfm.construct(use_ba=use_ba, ba_tol=ba_tol, verbose=0)
+            plot = lambda: self.master.after(0, self.plot_results, sfm.graph.X3d, sfm.graph.colors)
+            sfm.construct(use_ba=use_ba, ba_tol=ba_tol, verbose=0, callback=plot, interval=0.3)
             print("Reconstruction completed successfully.")
-            self.master.after(0, self.plot_results, sfm.graph.X3d, sfm.graph.colors)
+            plot()
         except Exception as e:
             print(f"Error: {str(e)}")
         finally:

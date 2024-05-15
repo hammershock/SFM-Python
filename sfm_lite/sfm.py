@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -40,7 +41,7 @@ class SFM:
         self.K = K
 
     @timeit
-    def construct(self, min_matches=80, use_ba=False, ba_tol=1e-10, verbose=2):
+    def construct(self, min_matches=80, use_ba=False, ba_tol=1e-10, verbose=2, callback=None, interval=0.0):
         self.graph = _sfm_build_graph(self.image_dir, self.K, min_matches=min_matches)
         self.graph = self._build_tracks()  # build tracks
         self._initial_register()  # initial register
@@ -54,7 +55,9 @@ class SFM:
             self._apply_increment(edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r)
             if use_ba:
                 self._apply_bundle_adjustment(tol=ba_tol, verbose=verbose)
-                visualize_points3d(self.graph.X3d)
+            if callback:
+                callback()
+                time.sleep(interval)
             logging.info(f'edge {i} finished.')
 
     @staticmethod
