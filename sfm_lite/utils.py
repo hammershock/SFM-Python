@@ -1,5 +1,7 @@
 import datetime
 
+import numpy as np
+
 
 def timeit(func):
     def wrapper(*args, **kwargs):
@@ -11,3 +13,17 @@ def timeit(func):
         print(f"Function '{func.__name__}' executed in {duration.total_seconds():.6f}")
         return result
     return wrapper
+
+
+def load_calibration_data(txt_path):
+    """
+    :param txt_path:
+    :return:
+    """
+    K = []
+    with open(txt_path, 'r') as f:
+        for line in f:
+            K.append(list(map(float, line.split())))
+    K = np.array(K)
+    assert K.shape == (3, 3), K.shape
+    return K

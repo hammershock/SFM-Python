@@ -4,9 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 from scipy.optimize import least_squares
-from scipy.sparse import lil_matrix
-
-from sfm.utils import timeit
 
 import cv2
 import joblib
@@ -14,11 +11,11 @@ import numpy as np
 from tqdm import tqdm
 from scipy.spatial.transform import Rotation as Rot
 
-from sfm.metrics import calc_angle
-from sfm.transforms import H_from_RT, H_from_rtvec, RT_from_H
-from sfm.visualize import visualize_points3d
+from .transforms import H_from_RT, H_from_rtvec, RT_from_H
+from .visualize import visualize_points3d
 from .graph import Graph, Node, Edge
-
+from .utils import timeit
+from .bundle_adjustment import create_sparsity_matrix, compute_residuals
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
 
@@ -33,45 +30,6 @@ def _sfm_build_graph(image_dir, K, min_matches=80):
     return graph
 
 
-def create_sparsity_matrix(n_cameras, n_points, n_obs, camera_indices, point3d_indices, fixed_camera_indices=()):
-    """Create a sparsity structure for the Jacobian matrix used in optimization."""
-    assert len(camera_indices) == len(point3d_indices)
-    J = lil_matrix((n_obs * 2, n_cameras * 6 + n_points * 3), dtype=int)
-
-    for i, (point_idx, cam_idx) in enumerate(zip(point3d_indices, camera_indices)):
-        row = i * 2
-        if cam_idx not in fixed_camera_indices:
-            J[row:row + 2, cam_idx * 6:cam_idx * 6 + 6] = 1
-        J[row:row + 2, n_cameras * 6 + point_idx * 3:n_cameras * 6 + point_idx * 3 + 3] = 1
-
-    return J
-
-
-def project_points(points, camera_params, K):
-    """Project 3D points onto camera image planes using the camera parameters and intrinsic matrix K."""
-    results = []
-
-    for point, params in zip(points, camera_params):
-        R = Rot.from_rotvec(params[:3]).as_matrix()
-        T = params[3:]
-        M = K @ np.hstack((R, -R @ T[:, np.newaxis]))
-
-        projected_point = M @ np.append(point, 1)
-        results.append(projected_point[:2] / projected_point[2])
-
-    return np.array(results)
-
-
-def compute_residuals(x, n_cameras, n_points, camera_indices, point_indices, points_2d, K):
-    """Compute residuals for the optimization."""
-    # cut the vector into two parts
-    camera_params = x[:n_cameras * 6].reshape((n_cameras, 6))  # (n_cam, 6)
-    points_3d = x[n_cameras * 6:].reshape((n_points, 3))  # (n_point, 3)
-    projected_points = project_points(points_3d[point_indices], camera_params[camera_indices], K)
-    output = (projected_points - points_2d).ravel()
-    return output
-
-
 class SFM:
     _sift = cv2.SIFT_create()
     _bf = cv2.BFMatcher(cv2.NORM_L2)
@@ -82,7 +40,7 @@ class SFM:
         self.K = K
 
     @timeit
-    def construct(self):
+    def construct(self, use_ba=False, ba_tol=1e-10, verbose=2):
         self.graph = _sfm_build_graph(self.image_dir, self.K, min_matches=80)
         self.graph = self._build_tracks()  # build tracks
         self._initial_register()  # initial register
@@ -94,8 +52,9 @@ class SFM:
                 break
             edge, _, (pt3ds_l, pt2ds_l), (pt3ds_r, pt2ds_r) = result
             self._apply_increment(edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r)
-            self._apply_bundle_adjustment(tol=1e-10, verbose=2)
-            visualize_points3d(self.graph.X3d)
+            if use_ba:
+                self._apply_bundle_adjustment(tol=ba_tol, verbose=verbose)
+                visualize_points3d(self.graph.X3d)
             logging.info(f'edge {i} finished.')
 
     @staticmethod
@@ -163,7 +122,13 @@ class SFM:
             O2 = -np.linalg.inv(M2[:, :3]) @ M2[:, 3]
             ray1 = X3d - O1[np.newaxis, :]
             ray2 = X3d - O2[np.newaxis, :]
-            angle = np.median(calc_angle(ray1, ray2))
+
+            # angle between two rays
+            dot_product = np.sum(ray1 * ray2, axis=0)
+            norms = np.linalg.norm(ray1, axis=0) * np.linalg.norm(ray2, axis=0)
+            cosine_angle = dot_product / norms
+            angle = np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
+            angle = np.median(angle)
             if 3 < angle < 60 and angle < best_angle:
                 best_angle = angle
                 initial_edge = edge
@@ -230,35 +195,35 @@ class SFM:
         pt_indices = []
         cam_indices = []
         pt2ds = []
-        RTs = []
-        camera_map = {}
+        registered_cameras = {node.idx for node in self.graph.nodes if node.registered}
         for point_idx, lst in self.graph.tracks.items():
             for cam_id, feat_idx, x, y in lst:
-                pt_indices.append(point_idx)
-                pt2ds.append([x, y])
-                if cam_id not in camera_map:
-                    camera_map[cam_id] = len(camera_map)
-                    RTs.append(RT_from_H(self.graph[cam_id].H))
-                    assert len(RTs) == len(camera_map)
-                cam_indices.append(camera_map[cam_id])
+                if cam_id in registered_cameras:
+                    pt_indices.append(point_idx)
+                    pt2ds.append([x, y])
+                    cam_indices.append(cam_id)
 
         pt2ds = np.array(pt2ds)
         cam_indices = np.array(cam_indices)
 
-        camera_params = [(Rot.from_matrix(R).as_rotvec(), T.flatten()) for R, T in RTs]
+        cameras_registered = [node for node in self.graph.nodes if node.registered]
+        RTs = [RT_from_H(node.H) for node in cameras_registered]
+        camera_map = {node.idx: i for i, node in enumerate(cameras_registered)}
 
+        camera_params = [(Rot.from_matrix(R).as_rotvec(), T.flatten()) for R, T in RTs]
+        camera_indices = np.array([camera_map[camera_idx] for camera_idx in cam_indices])
         initial_guess = np.hstack([np.hstack([e, t]).ravel() for e, t in camera_params] + [self.graph.X3d.ravel()])
 
-        n_cam = len(camera_map)
+        n_cam = len(RTs)
         n_points = len(self.graph.X3d)
         n_observations = len(pt_indices)
 
         # Generate sparsity matrix and indices
-        jac_sparsity = create_sparsity_matrix(n_cam, n_points, n_observations, cam_indices, pt_indices, {camera_map[self.graph.initial_cam.idx]})  # (8, 21)
+        jac_sparsity = create_sparsity_matrix(n_cam, n_points, n_observations, camera_indices, pt_indices)  # (8, 21)
 
         result = least_squares(compute_residuals, initial_guess, jac_sparsity=jac_sparsity, verbose=verbose,
                                x_scale='jac', ftol=tol, method='trf',
-                               args=(n_cam, n_points, cam_indices, pt_indices, pt2ds, self.K))
+                               args=(n_cam, n_points, camera_indices, pt_indices, pt2ds, self.K))
 
         # Camera parameters are the first n_cam * 6 elements
         camera_params = result.x[:n_cam * 6].reshape((n_cam, 6))
