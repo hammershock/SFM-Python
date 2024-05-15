@@ -24,7 +24,7 @@ def main(image_dir, calibration_file, min_matches, use_ba, ba_tol, verbose):
     K = load_calibration_data(calibration_file)
     sfm = SFM(image_dir, K)
     sfm.construct(min_matches=min_matches, use_ba=use_ba, ba_tol=ba_tol, verbose=verbose)
-    visualize_points3d(sfm.graph.X3d, s=1)
+    visualize_points3d(sfm.graph.X3d, sfm.graph.colors, s=5)
 
 
 if __name__ == '__main__':
