@@ -64,6 +64,10 @@ python sfm_script.py --image_dir <path_to_image_directory> --calibration_file <p
 python main.py --image_dir ./ImageDataset_SceauxCastle/images --calibration_file ./ImageDataset_SceauxCastle/images/K.txt --min_matches 80
 ```
 
+```bash
+python app.py
+```
+
 ## Author
 
 Hanmo Zhang  
