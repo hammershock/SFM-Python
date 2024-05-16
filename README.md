@@ -46,7 +46,7 @@ git submodule update --init --recursive
 To run the Structure From Motion reconstruction, use the following command:
 
 ```bash
-python sfm_script.py --image_dir <path_to_image_directory> --calibration_file <path_to_calibration_file> [--min_matches <minimum_pairs_of_matches>] [--use_ba] [--ba_tol <bundle_adjustment_tolerance>] [--verbose <verbosity_level>]
+python main.py --image_dir <path_to_image_directory> --calibration_file <path_to_calibration_file> [--min_matches <minimum_pairs_of_matches>] [--use_ba] [--ba_tol <bundle_adjustment_tolerance>] [--verbose <verbosity_level>]
 ```
 
 ### Arguments
