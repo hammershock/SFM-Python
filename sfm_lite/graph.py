@@ -163,7 +163,7 @@ class Graph:
         return [data['data'] for u, v, data in self._G.edges(data=True) if not data['data'].dirty]
 
     @property
-    def nodes(self):
+    def nodes(self) -> Generator[Node, None, None]:
         for node, data in self._G.nodes(data=True):
             yield data["data"]
 
@@ -177,5 +177,9 @@ class Graph:
     def increment_colors(self):
         colors = [self._color_mapping[i] for i in self.increment_mask]
         return np.array(colors)
+
+    @property
+    def camera_poses(self):
+        return [node.H for node in self.nodes if node.registered]
 
 

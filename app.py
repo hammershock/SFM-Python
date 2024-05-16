@@ -5,6 +5,7 @@ from tkinter import scrolledtext, Toplevel
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import threading
+import numpy as np
 
 from sfm_lite import load_calibration_data, SFM
 
@@ -29,6 +30,9 @@ class SFMApplication:
         self.plot_window = None
         self.canvas = None
         self.view_init = None  # 添加属性存储视角信息
+        self.show_cameras = tk.BooleanVar(value=False)  # 添加相机位姿显示控制
+        self.equal_axes = tk.BooleanVar(value=False)  # 添加等轴显示控制
+        self.sfm = None
 
         master.title("SFM Reconstruction GUI")
 
@@ -55,13 +59,21 @@ class SFMApplication:
         # Add radiobuttons for color selection
         self.color_mode_var = tk.StringVar(value="increment")
         tk.Label(master, text="Color Mode:").grid(row=4, column=0, sticky='ew')
-        tk.Radiobutton(master, text="Increment Colors", variable=self.color_mode_var, value="increment").grid(row=4, column=1, sticky='w')
-        tk.Radiobutton(master, text="Average Colors", variable=self.color_mode_var, value="average").grid(row=4, column=1, sticky='e')
+        tk.Radiobutton(master, text="Increment Colors", variable=self.color_mode_var, value="increment", command=self.redraw).grid(row=4, column=1, sticky='w')
+        tk.Radiobutton(master, text="Average Colors", variable=self.color_mode_var, value="average", command=self.redraw).grid(row=4, column=1, sticky='e')
 
-        tk.Button(master, text="Run Reconstruction", command=self.start_thread).grid(row=5, columnspan=2, sticky='ew')
+        # Add checkbox for camera poses display
+        tk.Label(master, text="Show Camera Poses:").grid(row=5, column=0, sticky='ew')
+        tk.Checkbutton(master, text="Enable", variable=self.show_cameras, command=self.redraw).grid(row=5, column=1, sticky='ew')
+
+        # Add checkbox for equal axes
+        tk.Label(master, text="Equal Axes:").grid(row=6, column=0, sticky='ew')
+        tk.Checkbutton(master, text="Enable", variable=self.equal_axes, command=self.redraw).grid(row=6, column=1, sticky='ew')
+
+        tk.Button(master, text="Run Reconstruction", command=self.start_thread).grid(row=7, columnspan=2, sticky='ew')
 
         self.output_console = scrolledtext.ScrolledText(master, height=15)
-        self.output_console.grid(row=6, columnspan=2, sticky='nsew')
+        self.output_console.grid(row=8, columnspan=2, sticky='nsew')
         sys.stdout = StdoutRedirector(self.output_console)
 
         self.fig = plt.Figure(figsize=(5, 4))
@@ -83,18 +95,19 @@ class SFMApplication:
             print("Loading calibration data...")
             K = load_calibration_data(cal_file)
             print("Initializing SFM...")
-            sfm = SFM(image_dir, K)
+            self.sfm = SFM(image_dir, K)
             print("Running reconstruction...")
 
             def plot():
                 color_mode = self.color_mode_var.get()
                 if color_mode == "increment":
-                    colors = sfm.graph.increment_colors
+                    colors = self.sfm.graph.increment_colors
                 else:
-                    colors = sfm.graph.colors
-                self.master.after(0, self.plot_results, sfm.graph.X3d, colors)
+                    colors = self.sfm.graph.colors
+                camera_poses = self.sfm.graph.camera_poses  # 获取相机位姿
+                self.master.after(0, self.plot_results, self.sfm.graph.X3d, colors, camera_poses)
 
-            sfm.construct(use_ba=use_ba, ba_tol=ba_tol, verbose=0, callback=plot, interval=0.1)
+            self.sfm.construct(use_ba=use_ba, ba_tol=ba_tol, verbose=0, callback=plot, interval=0.1)
             print("Reconstruction completed successfully.")
             plot()
         except Exception as e:
@@ -108,7 +121,7 @@ class SFMApplication:
             self.thread_running = False
             self.thread.join()  # 等待线程结束
 
-    def plot_results(self, X3d, colors):
+    def plot_results(self, X3d, colors, camera_poses=None):
         if self.plot_window is None or not self.plot_window.winfo_exists():
             self.plot_window = Toplevel(self.master)
             self.plot_window.title("Reconstruction Results")
@@ -128,6 +141,18 @@ class SFMApplication:
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
 
+        # 设置相同的尺度
+        if self.equal_axes.get():
+            self.set_axes_equal(ax)
+
+        # 显示相机位姿
+        if self.show_cameras.get() and camera_poses is not None:
+            for pose in camera_poses:
+                R, t = pose[:3, :3], pose[:3, 3]
+                ax.quiver(t[0], t[1], t[2], R[0, 0], R[1, 0], R[2, 0], length=0.5, color='r')
+                ax.quiver(t[0], t[1], t[2], R[0, 1], R[1, 1], R[2, 1], length=0.5, color='g')
+                ax.quiver(t[0], t[1], t[2], R[0, 2], R[1, 2], R[2, 2], length=0.5, color='b')
+
         # 保存当前的视角信息
         self.view_init = (ax.elev, ax.azim)
 
@@ -138,6 +163,44 @@ class SFMApplication:
             self.view_init = (ax.elev, ax.azim)
 
         self.canvas.mpl_connect('motion_notify_event', update_view)
+
+    def set_axes_equal(self, ax):
+        '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
+        cubes as cubes, etc..  This is one possible solution to Matplotlib's
+        ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
+
+        Input
+          ax: a matplotlib axis, e.g., as output from plt.gca().
+        '''
+
+        x_limits = ax.get_xlim3d()
+        y_limits = ax.get_ylim3d()
+        z_limits = ax.get_zlim3d()
+
+        x_range = abs(x_limits[1] - x_limits[0])
+        x_middle = np.mean(x_limits)
+        y_range = abs(y_limits[1] - y_limits[0])
+        y_middle = np.mean(y_limits)
+        z_range = abs(z_limits[1] - z_limits[0])
+        z_middle = np.mean(z_limits)
+
+        plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+        ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+        ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+        ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+    def redraw(self):
+        if self.sfm is None:
+            return
+
+        color_mode = self.color_mode_var.get()
+        if color_mode == "increment":
+            colors = self.sfm.graph.increment_colors
+        else:
+            colors = self.sfm.graph.colors
+        camera_poses = self.sfm.graph.camera_poses
+        self.plot_results(self.sfm.graph.X3d, colors, camera_poses)
 
 
 if __name__ == '__main__':
