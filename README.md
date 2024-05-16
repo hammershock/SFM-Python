@@ -5,19 +5,7 @@ Incremental MultiView Structure From Motion          ---- A simple Practice in P
 
 This project implements a simple practice of Incremental MultiView Structure From Motion (SfM) in Python. The primary objective is to reconstruct 3D structures from a set of 2D images. The implementation utilizes several libraries including OpenCV, NumPy, Matplotlib, Joblib, TQDM, NetworkX, and SciPy for Bundle Adjustment.
 
-## Requirements
-
-The project requires the following Python libraries:
-
-- opencv-python
-- numpy
-- matplotlib
-- joblib
-- tqdm
-- networkx
-- scipy
-
-## Installation
+## Requirements & Installation
 
 To install the required libraries, you can use pip:
 
