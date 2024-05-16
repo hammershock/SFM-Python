@@ -26,8 +26,9 @@ class SFMApplication:
         self.master = master
         self.thread = None
         self.thread_running = False
-        self.plot_window = None  # 新窗口
-        self.canvas = None  # 画布初始化
+        self.plot_window = None
+        self.canvas = None
+        self.view_init = None  # 添加属性存储视角信息
 
         master.title("SFM Reconstruction GUI")
 
@@ -51,10 +52,16 @@ class SFMApplication:
         self.ba_tol_entry.grid(row=3, column=1, sticky='ew')
         self.ba_tol_entry.insert(0, "1e-10")
 
-        tk.Button(master, text="Run Reconstruction", command=self.start_thread).grid(row=4, columnspan=2, sticky='ew')
+        # Add radiobuttons for color selection
+        self.color_mode_var = tk.StringVar(value="increment")
+        tk.Label(master, text="Color Mode:").grid(row=4, column=0, sticky='ew')
+        tk.Radiobutton(master, text="Increment Colors", variable=self.color_mode_var, value="increment").grid(row=4, column=1, sticky='w')
+        tk.Radiobutton(master, text="Average Colors", variable=self.color_mode_var, value="average").grid(row=4, column=1, sticky='e')
+
+        tk.Button(master, text="Run Reconstruction", command=self.start_thread).grid(row=5, columnspan=2, sticky='ew')
 
         self.output_console = scrolledtext.ScrolledText(master, height=15)
-        self.output_console.grid(row=5, columnspan=2, sticky='nsew')
+        self.output_console.grid(row=6, columnspan=2, sticky='nsew')
         sys.stdout = StdoutRedirector(self.output_console)
 
         self.fig = plt.Figure(figsize=(5, 4))
@@ -78,8 +85,16 @@ class SFMApplication:
             print("Initializing SFM...")
             sfm = SFM(image_dir, K)
             print("Running reconstruction...")
-            plot = lambda: self.master.after(0, self.plot_results, sfm.graph.X3d, sfm.graph.colors)
-            sfm.construct(use_ba=use_ba, ba_tol=ba_tol, verbose=0, callback=plot, interval=0.3)
+
+            def plot():
+                color_mode = self.color_mode_var.get()
+                if color_mode == "increment":
+                    colors = sfm.graph.increment_colors
+                else:
+                    colors = sfm.graph.colors
+                self.master.after(0, self.plot_results, sfm.graph.X3d, colors)
+
+            sfm.construct(use_ba=use_ba, ba_tol=ba_tol, verbose=0, callback=plot, interval=0.1)
             print("Reconstruction completed successfully.")
             plot()
         except Exception as e:
@@ -103,11 +118,26 @@ class SFMApplication:
             self.fig.clear()
 
         ax = self.fig.add_subplot(111, projection='3d')
-        ax.scatter(X3d[:, 0], X3d[:, 1], X3d[:, 2], c=colors/255.0, s=5)
+
+        # 检查之前是否有视角信息
+        if self.view_init is not None:
+            ax.view_init(elev=self.view_init[0], azim=self.view_init[1])
+
+        ax.scatter(X3d[:, 0], X3d[:, 1], X3d[:, 2], c=colors / 255.0, s=5)
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
+
+        # 保存当前的视角信息
+        self.view_init = (ax.elev, ax.azim)
+
         self.canvas.draw()
+
+        # 保存用户交互后的视角
+        def update_view(event):
+            self.view_init = (ax.elev, ax.azim)
+
+        self.canvas.mpl_connect('motion_notify_event', update_view)
 
 
 if __name__ == '__main__':

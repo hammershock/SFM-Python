@@ -110,6 +110,7 @@ class Edge:
 
         self.parent.X3d = np.vstack((self.parent.X3d, new_X3d))
         self.parent.increment_mask.extend([Edge.n_constructed] * len(new_X3d))
+        self.parent._color_mapping[Edge.n_constructed] = np.random.randint(255, size=(3, ))
         Edge.n_constructed += 1
 
 
@@ -117,6 +118,7 @@ class Graph:
     def __init__(self):
         self._G = nx.DiGraph()
         self._node_idx = 0
+        self._color_mapping = {}
 
         self.X3d = np.empty((0, 3))
         self.increment_mask = []
@@ -170,3 +172,10 @@ class Graph:
         assert len(self.X3d) == len(self.color_tree)
         colors = np.array([np.max(self.color_tree[idx], axis=0) for idx in range(len(self.X3d))])
         return colors[:, [2, 1, 0]]
+
+    @property
+    def increment_colors(self):
+        colors = [self._color_mapping[i] for i in self.increment_mask]
+        return np.array(colors)
+
+
