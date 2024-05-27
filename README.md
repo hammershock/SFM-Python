@@ -1,6 +1,13 @@
 # SFM_Python
 Incremental MultiView Structure From Motion          ---- A simple Practice in Python
 
+![opencv-python](https://img.shields.io/badge/opencv--python-4.9.0.80-blue)
+![numpy](https://img.shields.io/badge/numpy-1.26.4-orange)
+![networkx](https://img.shields.io/badge/networkx-3.3-yellow)
+![tqdm](https://img.shields.io/badge/tqdm-4.66.4-green)
+![matplotlib](https://img.shields.io/badge/matplotlib-3.8.4-red)
+![joblib](https://img.shields.io/badge/joblib-1.4.2-purple)
+![scipy](https://img.shields.io/badge/scipy-1.13.0-lightgrey)
 ![Peek 2024-05-15 20-11](https://github.com/hammershock/SFM_Python/assets/109429530/ff11f797-2908-4f52-9696-47a0f6b7d1ff)
 
 This project implements a simple practice of Incremental MultiView Structure From Motion (SfM) in Python. The primary objective is to reconstruct 3D structures from a set of 2D images. The implementation utilizes several libraries including OpenCV, NumPy, Matplotlib, Joblib, TQDM, NetworkX, and SciPy for Bundle Adjustment.
