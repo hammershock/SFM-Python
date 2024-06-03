@@ -1,4 +1,4 @@
-# SFM_Python
+# SFM-Python
 增量式多视图结构重建（Structure From Motion）——Python 实现的简单练习
 ——CV Course大作业
 
