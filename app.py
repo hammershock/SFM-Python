@@ -1,5 +1,4 @@
 import sys
-import time
 import tkinter as tk
 from tkinter import scrolledtext, Toplevel
 import matplotlib.pyplot as plt

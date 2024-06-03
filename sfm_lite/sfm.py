@@ -22,6 +22,8 @@ CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
 
 memory = joblib.Memory(CACHE_DIR, verbose=0)
 
+from cv2_lite import recoverPose, triangulatePoints, findFundamentalMat, solvePnP
+
 
 @memory.cache
 def _sfm_build_graph(image_dir, K, min_matches=80):
@@ -105,7 +107,7 @@ class SFM:
         initial_X3d = None
         initial_pairs = None
         initial_H2 = None
-        for edge in self.graph.edges:
+        for edge in tqdm(self.graph.edges, "choosing edge"):
             pts1, pts2, pairs = edge.pt2ds_pt2ds()
             # Essential Matrix Decomposition
             _, R, T, mask = cv2.recoverPose(edge.E, pts1, pts2, self.K)
