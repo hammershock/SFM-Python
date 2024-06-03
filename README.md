@@ -1,4 +1,4 @@
-# SFM_Python
+# SFM-Python
 Incremental MultiView Structure From Motion          ---- A simple Practice in Python
 
 ![opencv-python](https://img.shields.io/badge/opencv--python-4.9.0.80-blue)
