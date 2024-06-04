@@ -18,6 +18,7 @@ from .visualize import visualize_points3d
 from .graph import Graph, Node, Edge
 from .utils import timeit
 from .bundle_adjustment import create_sparsity_matrix, compute_residuals
+from cv2_lite.solve_pnp import reproj_error
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
 
@@ -32,6 +33,12 @@ def _sfm_build_graph(image_dir, K, min_matches=80):
     graph = SFM._load_images(graph, image_dir)  # load images, extract features
     graph = SFM._match_features(graph, K, min_matches=min_matches)  # match features
     return graph
+
+
+def calc_reproj_error(points3d, points2d, K, R, tvec):
+    errors = reproj_error(points3d, points2d, K, R, tvec)
+    err = np.linalg.norm(errors, axis=1).mean()
+    return err
 
 
 class SFM:
@@ -117,18 +124,19 @@ class SFM:
         for edge in tqdm(self.graph.edges, "choosing edge"):
             pts1, pts2, pairs = edge.pt2ds_pt2ds()
             # Essential Matrix Decomposition
-            _, R, T, mask = cv2.recoverPose(edge.E, pts1, pts2, self.K)
+            _, R, t, mask = cv2.recoverPose(edge.E, pts1, pts2, self.K)
 
             # Initial Pose
             H1 = np.eye(4)
-            H2 = H_from_RT(R, T)
+            H2 = H_from_RT(R, t)
 
             # Triangulate points
             M1, M2 = self.K @ H1[:3], self.K @ H2[:3]  # projection matrix
 
             X3d_H = cv2.triangulatePoints(M1, M2, pts1.T, pts2.T)  # (4, N)
             X3d_H /= X3d_H[-1]
-            X3d = X3d_H[:3].T[mask.ravel() > 0]
+            visible_mask = mask.ravel() > 0
+            X3d = X3d_H[:3].T[visible_mask]
 
             # calculate median angle
             O1 = -np.linalg.inv(M1[:, :3]) @ M1[:, 3]
@@ -141,9 +149,14 @@ class SFM:
             norms = np.linalg.norm(ray1, axis=0) * np.linalg.norm(ray2, axis=0)
             cosine_angle = dot_product / norms
             angle = np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
-            angle = np.median(angle)
-            if 3 < angle < 60 and angle < best_angle:
-                best_angle = angle
+            mid_angle = np.median(angle)
+
+            err1 = calc_reproj_error(X3d, pts1[visible_mask], self.K, R=np.eye(3), tvec=np.zeros(3))
+            err2 = calc_reproj_error(X3d, pts2[visible_mask], self.K, R=R, tvec=t)
+            # print(f"selecting initial edge: mid_angle: {mid_angle}mean reproj errs: {(err1+err2)/2}")
+
+            if 3 < mid_angle < 60 and mid_angle < best_angle:
+                best_angle = mid_angle
                 initial_edge = edge
                 initial_X3d = X3d
                 initial_pairs = pairs
@@ -198,13 +211,26 @@ class SFM:
         M1, M2 = self.K @ n1.H[:3], self.K @ n2.H[:3]
         X3d_H = cv2.triangulatePoints(M1, M2, pts1.T, pts2.T)  # (4, N)
         X3d_H /= X3d_H[-1]
-
         # Create visibility mask
         P1 = np.linalg.inv(n1.H) @ X3d_H
         P2 = np.linalg.inv(n2.H) @ X3d_H
-        mask = (P1[2, :] > 0) & (P2[2, :] > 0)
+        visibility_mask = (P1[2, :] > 0) & (P2[2, :] > 0)
+        X3d = X3d_H[:3].T[visibility_mask]
 
-        edge.construct_3d(X3d_H[:3].T[mask], pairs[mask])
+        err1 = calc_reproj_error(X3d, pts1[visibility_mask], self.K, *RT_from_H(n1.H))
+        err2 = calc_reproj_error(X3d, pts2[visibility_mask], self.K, *RT_from_H(n2.H))
+
+        edge.construct_3d(X3d, pairs[visibility_mask])
+
+        errs = 0.0
+        n = 0
+        for idx, x3d in enumerate(self.graph.X3d):
+            for cam_id, feat_id, x, y in self.graph.tracks[idx]:
+                if self.graph[cam_id].registered:
+                    n += 1
+                    err = calc_reproj_error(x3d.reshape(1, 3), np.array([x, y]), self.K, *RT_from_H(self.graph[cam_id].H))
+                    errs += err
+        # print(f"incremental err: {(err1 + err2) / 2}\ttotal mean reproj err: {errs}/{n}={errs/n}")
 
     def _apply_bundle_adjustment(self, tol=1e-10, verbose=2):
         """
