@@ -153,7 +153,7 @@ class SFM:
 
             err1 = calc_reproj_error(X3d, pts1[visible_mask], self.K, R=np.eye(3), tvec=np.zeros(3))
             err2 = calc_reproj_error(X3d, pts2[visible_mask], self.K, R=R, tvec=t)
-            # print(f"selecting initial edge: mid_angle: {mid_angle}mean reproj errs: {(err1+err2)/2}")
+            print(f"selecting initial edge: mid_angle: {mid_angle}mean reproj errs: {(err1+err2)/2}")
 
             if 3 < mid_angle < 60 and mid_angle < best_angle:
                 best_angle = mid_angle
@@ -230,7 +230,7 @@ class SFM:
                     n += 1
                     err = calc_reproj_error(x3d.reshape(1, 3), np.array([x, y]), self.K, *RT_from_H(self.graph[cam_id].H))
                     errs += err
-        # print(f"incremental err: {(err1 + err2) / 2}\ttotal mean reproj err: {errs}/{n}={errs/n}")
+        print(f"incremental err: {(err1 + err2) / 2}\ttotal mean reproj err: {errs}/{n}={errs/n}")
 
     def _apply_bundle_adjustment(self, tol=1e-10, verbose=2):
         """
