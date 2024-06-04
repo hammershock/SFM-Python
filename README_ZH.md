@@ -1,8 +1,6 @@
 # SFM-Python
 增量式多视图结构重建（Structure From Motion）—— 一个用Python的简单实现
 
-<img src="./images/logo.svg" alt="logo" title="SfM logo" width="240" height="80" style="display: block; margin: auto;">
-
 [![opencv-python](https://img.shields.io/badge/opencv--python-4.9.0.80-blue)](https://pypi.org/project/opencv-python/)
 [![numpy](https://img.shields.io/badge/numpy-1.26.4-orange)](https://pypi.org/project/numpy/)
 [![networkx](https://img.shields.io/badge/networkx-3.3-yellow)](https://pypi.org/project/networkx/)
@@ -10,6 +8,8 @@
 [![matplotlib](https://img.shields.io/badge/matplotlib-3.8.4-red)](https://pypi.org/project/matplotlib/)
 [![joblib](https://img.shields.io/badge/joblib-1.4.2-purple)](https://pypi.org/project/joblib/)
 [![scipy](https://img.shields.io/badge/scipy-1.13.0-lightgrey)](https://pypi.org/project/scipy/)
+
+<img src="./images/logo.svg" alt="logo" title="SfM logo" width="240" height="80" style="display: block; margin: auto;">
 
 本项目旨在提供一个**3D立体视觉**的经典范例，希望有助于正在学习这部分知识的同学可以深入细节，更好地理解其中的原理。欢迎任何形式的建议以及代码贡献！
 
