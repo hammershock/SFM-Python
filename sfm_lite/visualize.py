@@ -70,7 +70,6 @@ def visualize_graph(G):
     pos = nx.circular_layout(G)
 
     nx.draw(G, pos, with_labels=True, node_color='skyblue', edge_color='#909090', node_size=2000, arrowstyle='-|>', arrowsize=20)
-    # 可以使用不同的布局，如pos = nx.spring_layout(G), nx.planar_layout(G), nx.circular_layout(G), nx.random_layout(G)等
 
     plt.title("Co-visibility Graph Visualization")
     plt.show()

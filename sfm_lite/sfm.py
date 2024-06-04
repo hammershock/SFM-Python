@@ -140,6 +140,7 @@ class SFM:
             X3d_H = cv2.triangulatePoints(M1, M2, pts1.T, pts2.T)  # (4, N)
             X3d_H /= X3d_H[-1]
             visible_mask = mask.ravel() > 0
+
             X3d = X3d_H[:3].T[visible_mask]
 
             # calculate median angle
@@ -164,7 +165,7 @@ class SFM:
                 best_angle = mid_angle
                 initial_edge = edge
                 initial_X3d = X3d
-                initial_pairs = pairs
+                initial_pairs = pairs[visible_mask]
                 initial_H2 = H2
 
         # ensure the initial edge exists
@@ -220,6 +221,7 @@ class SFM:
         P1 = np.linalg.inv(n1.H) @ X3d_H
         P2 = np.linalg.inv(n2.H) @ X3d_H
         visibility_mask = (P1[2, :] > 0) & (P2[2, :] > 0)
+
         X3d = X3d_H[:3].T[visibility_mask]
 
         if verbose:
@@ -243,19 +245,8 @@ class SFM:
         apply bundle adjustment,
         optimize all registered camera poses and 3D points constructed to minimize the reprojection error
         """
-        pt_indices = []
-        cam_indices = []
-        pt2ds = []
-        registered_cameras = {node.idx for node in self.graph.nodes if node.registered}
-        for point_idx, lst in self.graph.tracks.items():
-            for cam_id, feat_idx, x, y in lst:
-                if cam_id in registered_cameras:
-                    pt_indices.append(point_idx)
-                    pt2ds.append([x, y])
-                    cam_indices.append(cam_id)
-
-        pt2ds = np.array(pt2ds)
-        cam_indices = np.array(cam_indices)
+        data = [(idx, cam_id, point2d) for idx, _, cam_id, _, point2d in self.graph.pt3ds_pt2ds()]
+        pt_indices, cam_indices, pt2ds = map(np.array, zip(*data))
 
         cameras_registered = [node for node in self.graph.nodes if node.registered]
         RTs = [RT_from_H(node.H) for node in cameras_registered]

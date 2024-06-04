@@ -5,53 +5,48 @@ import numpy as np
 from .transforms import euclidean_to_homogeneous
 
 
+def normalize_points(pts):
+    mean = np.mean(pts, axis=0)
+    std = np.std(pts)
+    T = np.array([
+        [1 / std, 0, -mean[0] / std],
+        [0, 1 / std, -mean[1] / std],
+        [0, 0, 1]
+    ])
+    pts_normalized = (pts - mean) / std
+    return pts_normalized, T
+
+
+def construct_matrix_A(pts1, pts2):
+    return np.column_stack([
+        pts2[:, 0] * pts1[:, 0], pts2[:, 0] * pts1[:, 1], pts2[:, 0],
+        pts2[:, 1] * pts1[:, 0], pts2[:, 1] * pts1[:, 1], pts2[:, 1],
+        pts1[:, 0], pts1[:, 1], np.ones(len(pts1))
+    ])
+
+
 def estimate_fundamental_matrix(pts1, pts2) -> np.ndarray:
-    assert pts1.shape == pts2.shape, "Point sets must have the same shape"
-    N = pts1.shape[0]
-    assert N >= 8, "At least 8 points are required to estimate the fundamental matrix"
+    if pts1.shape != pts2.shape:
+        raise ValueError("Point sets must have the same shape")
+    if pts1.shape[0] < 8:
+        raise ValueError("At least 8 points are required to estimate the fundamental matrix")
 
-    # Normalize points
-    pts1_mean = np.mean(pts1, axis=0)
-    pts2_mean = np.mean(pts2, axis=0)
+    pts1_normalized, T1 = normalize_points(pts1)
+    pts2_normalized, T2 = normalize_points(pts2)
 
-    pts1_std = np.std(pts1)
-    pts2_std = np.std(pts2)
-
-    T1 = np.array([[1 / pts1_std, 0, -pts1_mean[0] / pts1_std],
-                   [0, 1 / pts1_std, -pts1_mean[1] / pts1_std],
-                   [0, 0, 1]])
-
-    T2 = np.array([[1 / pts2_std, 0, -pts2_mean[0] / pts2_std],
-                   [0, 1 / pts2_std, -pts2_mean[1] / pts2_std],
-                   [0, 0, 1]])
-
-    pts1_normalized = (pts1 - pts1_mean) / pts1_std
-    pts2_normalized = (pts2 - pts2_mean) / pts2_std
-
-    # Construct matrix A for Af = 0
-    A = np.zeros((N, 9))
-    for i in range(N):
-        x1, y1 = pts1_normalized[i]
-        x2, y2 = pts2_normalized[i]
-        A[i] = [x2 * x1, x2 * y1, x2, y2 * x1, y2 * y1, y2, x1, y1, 1]
-
-    # Solve for f using SVD
+    A = construct_matrix_A(pts1_normalized, pts2_normalized)
     _, _, Vt = np.linalg.svd(A)
     F = Vt[-1].reshape(3, 3)
 
-    # Enforce rank-2 constraint on F
     U, S, Vt = np.linalg.svd(F)
     S[2] = 0
-    F = np.dot(U, np.dot(np.diag(S), Vt))
+    F = U @ np.diag(S) @ Vt
 
-    # Denormalize F
-    F = np.dot(T2.T, np.dot(F, T1))
-
-    return F
+    return T2.T @ F @ T1
 
 
 def estimate_fundamental_matrix_ransac(pts1, pts2, method='RANSAC', threshold=1.0, confidence=0.99, maxIters=1000) -> \
-Tuple[np.ndarray, np.ndarray, bool]:
+        Tuple[np.ndarray, np.ndarray, bool]:
     """
     Estimate the fundamental matrix using RANSAC to handle outliers.
 

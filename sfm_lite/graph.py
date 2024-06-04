@@ -190,4 +190,3 @@ class Graph:
                     point2d = np.array([x, y])
                     yield point3d_idx, point3d, cam_id, feat_id, point2d
 
-

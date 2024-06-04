@@ -67,4 +67,3 @@ def solve_p3p(points_2d, points_3d, K, *args, **kwargs):
         results.append((R, tvec))
 
     return results
-

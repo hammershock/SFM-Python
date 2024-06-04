@@ -2,50 +2,40 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from cv2_lite.transforms import matrix_to_rvec, rvec_to_matrix
+from cv2_lite.check_inputs import check_input_shapes
 
 
-def reproj_error(points_3d, points_2d, K, R, tvec):
-    projected_points_2d = (K @ (R @ points_3d.T + tvec.reshape(3, 1))).T
+@check_input_shapes
+def reproj_error(point3ds, point2ds, K, R, tvec):
+    projected_points_2d = (K @ (R @ point3ds.T + tvec.reshape(3, 1))).T
     projected_points_2d /= projected_points_2d[:, 2].reshape(-1, 1)
     projected_points_2d = projected_points_2d[:, :2]
-    error = (projected_points_2d - points_2d)
+    error = (projected_points_2d - point2ds)
     return error
 
 
+@check_input_shapes
 def _solve_pnp_linear(point3ds, point2ds, K):
-    """
-    线性方法解决PnP问题
-    Args:
-    point2ds (np.ndarray): 2D点坐标，形状为(N, 2)
-    point3ds (np.ndarray): 3D点坐标，形状为(N, 3)
-    K (np.ndarray): 相机内参矩阵，形状为(3, 3)
-
-    Returns:
-    np.ndarray: 旋转矩阵R，形状为(3, 3)
-    np.ndarray: 平移向量t，形状为(3,)
-    """
-    point2ds_h = np.hstack((point2ds, np.ones((point2ds.shape[0], 1))))
-
+    num_points = point3ds.shape[0]
+    point2ds_h = np.hstack((point2ds, np.ones((num_points, 1))))
     normalized_point2ds = np.linalg.inv(K) @ point2ds_h.T
-    normalized_point2ds = normalized_point2ds.T[:, :2]
+    normalized_point2ds = normalized_point2ds[:2].T
 
-    A = []
-    for i in range(point3ds.shape[0]):
+    A = np.zeros((2 * num_points, 12))
+    for i in range(num_points):
         X, Y, Z = point3ds[i]
         u, v = normalized_point2ds[i]
-        A.append([X, Y, Z, 1, 0, 0, 0, 0, -u * X, -u * Y, -u * Z, -u])
-        A.append([0, 0, 0, 0, X, Y, Z, 1, -v * X, -v * Y, -v * Z, -v])
-    A = np.array(A)
-    _, _, Vt = np.linalg.svd(A)
-    h = Vt[-1, :]
+        A[2*i] = [X, Y, Z, 1, 0, 0, 0, 0, -u*X, -u*Y, -u*Z, -u]
+        A[2*i+1] = [0, 0, 0, 0, X, Y, Z, 1, -v*X, -v*Y, -v*Z, -v]
 
-    h = h.reshape((3, 4))
+    _, _, Vt = np.linalg.svd(A)
+    h = Vt[-1].reshape(3, 4)
     R_t = h[:, :3]
     t = h[:, 3]
 
+    # Enforce orthogonality of R
     U, _, Vt = np.linalg.svd(R_t)
     R = U @ Vt
-
     if np.linalg.det(R) < 0:
         R = -R
         t = -t
@@ -53,6 +43,7 @@ def _solve_pnp_linear(point3ds, point2ds, K):
     return R, t
 
 
+@check_input_shapes
 def _solve_pnp_nonlinear(point3ds, point2ds, K, rvec, tvec):
     initial_guess = np.hstack((rvec.flatten(), tvec))
 
@@ -68,9 +59,10 @@ def _solve_pnp_nonlinear(point3ds, point2ds, K, rvec, tvec):
     return result.success, rvec, tvec
 
 
-def solve_pnp(points_3d, points_2d, K, *args, **kwargs):
-    R, tvec = _solve_pnp_linear(points_3d, points_2d, K)
-    success, rvec, tvec = _solve_pnp_nonlinear(points_3d, points_2d, K, matrix_to_rvec(R), tvec)
+@check_input_shapes
+def solve_pnp(point3ds, point2ds, K, *args, **kwargs):
+    R, tvec = _solve_pnp_linear(point3ds, point2ds, K)
+    success, rvec, tvec = _solve_pnp_nonlinear(point3ds, point2ds, K, matrix_to_rvec(R), tvec)
     return success, rvec, tvec
 
 
