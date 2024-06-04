@@ -22,7 +22,7 @@ from cv2_lite.solve_pnp import reproj_error
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
 
-memory = joblib.Memory(CACHE_DIR, verbose=0)
+memory = joblib.Memory(CACHE_DIR, verbose=2)
 
 # from cv2_lite import recoverPose, triangulatePoints, findFundamentalMat, solvePnP
 
@@ -54,7 +54,7 @@ class SFM:
     def construct(self, min_matches=80, use_ba=False, ba_tol=1e-10, verbose=2, callback=None, interval=0.0):
         self.graph = _sfm_build_graph(self.image_dir, self.K, min_matches=min_matches)
         self.graph = self._build_tracks()  # build tracks
-        self._initial_register()  # initial register
+        self._initial_register(verbose=verbose)  # initial register
 
         for i in range(len(self.graph.edges)):
             result = self._select_edge()
@@ -62,7 +62,7 @@ class SFM:
                 logging.info(f'finished after fusing {i + 1} edges')
                 break
             edge, _, (pt3ds_l, pt2ds_l), (pt3ds_r, pt2ds_r) = result
-            self._apply_increment(edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r)
+            self._apply_increment(edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r, verbose=verbose)
             if use_ba:
                 self._apply_bundle_adjustment(tol=ba_tol, verbose=verbose)
             if callback:
@@ -70,6 +70,7 @@ class SFM:
                 time.sleep(interval)
             logging.info(f'edge {i} finished.')
 
+    @timeit
     @staticmethod
     def _load_images(graph, image_dir):
         """load images from directory and add them to the graph"""
@@ -82,6 +83,7 @@ class SFM:
             graph.add_node(node)
         return graph
 
+    @timeit
     @staticmethod
     def _match_features(graph, K, min_matches=80):
         """match features of each edge"""
@@ -104,6 +106,7 @@ class SFM:
                     graph.add_edge(u, v, edge)
         return graph
 
+    @timeit
     def _build_tracks(self):
         """build tracks of each node"""
         for edge in tqdm(self.graph.edges, "building tracks"):
@@ -113,7 +116,8 @@ class SFM:
                 n2.tracks[j].add((edge.u, i))
         return self.graph
 
-    def _initial_register(self):
+    @timeit
+    def _initial_register(self, verbose=0):
         """initial register the first edge and generate initial 3D Points"""
         # choose edge
         initial_edge = None
@@ -151,9 +155,10 @@ class SFM:
             angle = np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
             mid_angle = np.median(angle)
 
-            err1 = calc_reproj_error(X3d, pts1[visible_mask], self.K, R=np.eye(3), tvec=np.zeros(3))
-            err2 = calc_reproj_error(X3d, pts2[visible_mask], self.K, R=R, tvec=t)
-            print(f"selecting initial edge: mid_angle: {mid_angle}mean reproj errs: {(err1+err2)/2}")
+            if verbose:
+                err1 = calc_reproj_error(X3d, pts1[visible_mask], self.K, R=np.eye(3), tvec=np.zeros(3))
+                err2 = calc_reproj_error(X3d, pts2[visible_mask], self.K, R=R, tvec=t)
+                print(f"selecting initial edge: mid_angle: {mid_angle}mean reproj errs: {(err1+err2)/2}")
 
             if 3 < mid_angle < 60 and mid_angle < best_angle:
                 best_angle = mid_angle
@@ -196,7 +201,7 @@ class SFM:
             logging.debug(f'ratio: {best_score}')
             return best_edge, best_score, map1, map2
 
-    def _apply_increment(self, edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r):
+    def _apply_increment(self, edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r, verbose=0):
         """triangulate new edge to construct 3D points incrementally """
         ret1, r1, t1 = cv2.solvePnP(pt3ds_l, pt2ds_l, self.K, np.zeros((1, 5)))
         ret2, r2, t2 = cv2.solvePnP(pt3ds_r, pt2ds_r, self.K, np.zeros((1, 5)))
@@ -217,20 +222,21 @@ class SFM:
         visibility_mask = (P1[2, :] > 0) & (P2[2, :] > 0)
         X3d = X3d_H[:3].T[visibility_mask]
 
-        err1 = calc_reproj_error(X3d, pts1[visibility_mask], self.K, *RT_from_H(n1.H))
-        err2 = calc_reproj_error(X3d, pts2[visibility_mask], self.K, *RT_from_H(n2.H))
+        if verbose:
+            err1 = calc_reproj_error(X3d, pts1[visibility_mask], self.K, *RT_from_H(n1.H))
+            err2 = calc_reproj_error(X3d, pts2[visibility_mask], self.K, *RT_from_H(n2.H))
+            print(f"incremental err: {(err1 + err2) / 2}")
 
         edge.construct_3d(X3d, pairs[visibility_mask])
 
         errs = 0.0
-        n = 0
-        for idx, x3d in enumerate(self.graph.X3d):
-            for cam_id, feat_id, x, y in self.graph.tracks[idx]:
-                if self.graph[cam_id].registered:
-                    n += 1
-                    err = calc_reproj_error(x3d.reshape(1, 3), np.array([x, y]), self.K, *RT_from_H(self.graph[cam_id].H))
-                    errs += err
-        print(f"incremental err: {(err1 + err2) / 2}\ttotal mean reproj err: {errs}/{n}={errs/n}")
+        for n, (_, point3d, cam_id, feat_id, point2d) in enumerate(self.graph.pt3ds_pt2ds()):
+            point3d = point3d.reshape((1, 3))
+            point2d = point2d.reshape((1, 2))
+            errs += calc_reproj_error(point3d, point2d, self.K, *RT_from_H(self.graph[cam_id].H))
+
+        if verbose:
+            print(f"total mean reproj err: {errs}/{n}={errs/n}")
 
     def _apply_bundle_adjustment(self, tol=1e-10, verbose=2):
         """

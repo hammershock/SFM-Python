@@ -9,7 +9,7 @@ from itertools import product
 import cv2
 import networkx as nx
 import numpy as np
-from typing import Union, overload, Tuple, Optional, Set, DefaultDict, Generator, List, Type
+from typing import Union, overload, Tuple, Optional, Set, DefaultDict, Generator, List, Type, Iterator
 
 
 class Node:
@@ -164,7 +164,7 @@ class Graph:
         return [data['data'] for u, v, data in self._G.edges(data=True) if not data['data'].dirty]
 
     @property
-    def nodes(self) -> Generator[Node, None, None]:
+    def nodes(self) -> Iterator[Node]:
         for node, data in self._G.nodes(data=True):
             yield data["data"]
 
@@ -182,5 +182,12 @@ class Graph:
     @property
     def camera_poses(self):
         return [node.H for node in self.nodes if node.registered]
+
+    def pt3ds_pt2ds(self) -> Iterator[Tuple[int, np.ndarray, int, int, np.ndarray]]:
+        for point3d_idx, point3d in enumerate(self.X3d):
+            for cam_id, feat_id, x, y in self.tracks[point3d_idx]:
+                if self[cam_id].registered:
+                    point2d = np.array([x, y])
+                    yield point3d_idx, point3d, cam_id, feat_id, point2d
 
 
