@@ -1,9 +1,7 @@
 # SFM-Python
 增量式多视图结构重建（Structure From Motion）—— 一个用Python的简单实现
 
-<div style="text-align: center;">
-    <img src="./images/logo.png" alt="logo" title="SfM logo" width="140" height="140">
-</div>
+![Uploading logo.svg…]()
 
 [![opencv-python](https://img.shields.io/badge/opencv--python-4.9.0.80-blue)](https://pypi.org/project/opencv-python/)
 [![numpy](https://img.shields.io/badge/numpy-1.26.4-orange)](https://pypi.org/project/numpy/)
