@@ -2,13 +2,13 @@
 增量式多视图结构重建（Structure From Motion）——Python 实现的简单练习
 ——CV Course大作业
 
-![opencv-python](https://img.shields.io/badge/opencv--python-4.9.0.80-blue)
-![numpy](https://img.shields.io/badge/numpy-1.26.4-orange)
-![networkx](https://img.shields.io/badge/networkx-3.3-yellow)
-![tqdm](https://img.shields.io/badge/tqdm-4.66.4-green)
-![matplotlib](https://img.shields.io/badge/matplotlib-3.8.4-red)
-![joblib](https://img.shields.io/badge/joblib-1.4.2-purple)
-![scipy](https://img.shields.io/badge/scipy-1.13.0-lightgrey)
+[![opencv-python](https://img.shields.io/badge/opencv--python-4.9.0.80-blue)](https://pypi.org/project/opencv-python/)
+[![numpy](https://img.shields.io/badge/numpy-1.26.4-orange)](https://pypi.org/project/numpy/)
+[![networkx](https://img.shields.io/badge/networkx-3.3-yellow)](https://pypi.org/project/networkx/)
+[![tqdm](https://img.shields.io/badge/tqdm-4.66.4-green)](https://pypi.org/project/tqdm/)
+[![matplotlib](https://img.shields.io/badge/matplotlib-3.8.4-red)](https://pypi.org/project/matplotlib/)
+[![joblib](https://img.shields.io/badge/joblib-1.4.2-purple)](https://pypi.org/project/joblib/)
+[![scipy](https://img.shields.io/badge/scipy-1.13.0-lightgrey)](https://pypi.org/project/scipy/)
 
 [English](README.md)
 
