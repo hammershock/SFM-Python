@@ -10,7 +10,7 @@ Incremental MultiView Structure From Motion          ---- A simple Practice in P
 [![scipy](https://img.shields.io/badge/scipy-1.13.0-lightgrey)](https://pypi.org/project/scipy/)
 
 
-[中文版文档](README_ZH.md)
+[中文版文档请戳](README_ZH.md)
 
 ![Peek 2024-05-15 20-11](https://github.com/hammershock/SFM_Python/assets/109429530/ff11f797-2908-4f52-9696-47a0f6b7d1ff)
 
