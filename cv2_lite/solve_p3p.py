@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def solve_p3p(points_2d, points_3d, K):
+def solve_p3p(points_2d, points_3d, K, *args, **kwargs):
     """
     解P3P,返回候选的4组解
     Solve the P3P problem using three 2D-3D point correspondences.
