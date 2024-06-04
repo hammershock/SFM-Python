@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from itertools import product
 from pathlib import Path
 from typing import Optional
 
@@ -22,7 +23,7 @@ CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
 
 memory = joblib.Memory(CACHE_DIR, verbose=0)
 
-from cv2_lite import recoverPose, triangulatePoints, findFundamentalMat, solvePnP
+# from cv2_lite import recoverPose, triangulatePoints, findFundamentalMat, solvePnP
 
 
 @memory.cache
@@ -38,7 +39,7 @@ class SFM:
     _bf = cv2.BFMatcher(cv2.NORM_L2)
 
     def __init__(self, image_dir, K):
-        self.graph : Optional[Graph] = None
+        self.graph: Optional[Graph] = None
         self.image_dir = image_dir
         self.K = K
 
@@ -64,6 +65,7 @@ class SFM:
 
     @staticmethod
     def _load_images(graph, image_dir):
+        """load images from directory and add them to the graph"""
         image_extensions = ('jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG')
         image_filenames = [filename for filename in os.listdir(image_dir) if filename.endswith(image_extensions)]
         for filename in tqdm(image_filenames, "loading images"):
@@ -75,7 +77,10 @@ class SFM:
 
     @staticmethod
     def _match_features(graph, K, min_matches=80):
-        for u, v in tqdm(graph.full_edges(), "matching features"):
+        """match features of each edge"""
+        full_edges = [(u, v) for u, v in product(graph._G.nodes, repeat=2) if u > v]
+
+        for u, v in tqdm(full_edges, "matching features"):
             edge = Edge(u, v, graph)
             matches = SFM._bf.knnMatch(graph[u].desc, graph[v].desc, k=2)
             # apply Lowe's ratio test
@@ -93,6 +98,7 @@ class SFM:
         return graph
 
     def _build_tracks(self):
+        """build tracks of each node"""
         for edge in tqdm(self.graph.edges, "building tracks"):
             n1, n2 = edge.nodes()
             for i, j in edge.pairs:
@@ -101,6 +107,7 @@ class SFM:
         return self.graph
 
     def _initial_register(self):
+        """initial register the first edge and generate initial 3D Points"""
         # choose edge
         initial_edge = None
         best_angle = float('inf')
@@ -154,6 +161,7 @@ class SFM:
         initial_edge.construct_3d(initial_X3d, initial_pairs)
 
     def _select_edge(self):
+        """select a remaining edge to reconstruct"""
         edges = self.graph.edges
         # select the best edge
         if len(edges) == 0:
@@ -176,6 +184,7 @@ class SFM:
             return best_edge, best_score, map1, map2
 
     def _apply_increment(self, edge, pt3ds_l, pt2ds_l, pt3ds_r, pt2ds_r):
+        """triangulate new edge to construct 3D points incrementally """
         ret1, r1, t1 = cv2.solvePnP(pt3ds_l, pt2ds_l, self.K, np.zeros((1, 5)))
         ret2, r2, t2 = cv2.solvePnP(pt3ds_r, pt2ds_r, self.K, np.zeros((1, 5)))
 
@@ -198,6 +207,10 @@ class SFM:
         edge.construct_3d(X3d_H[:3].T[mask], pairs[mask])
 
     def _apply_bundle_adjustment(self, tol=1e-10, verbose=2):
+        """
+        apply bundle adjustment,
+        optimize all registered camera poses and 3D points constructed to minimize the reprojection error
+        """
         pt_indices = []
         cam_indices = []
         pt2ds = []

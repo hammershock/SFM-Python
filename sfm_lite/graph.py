@@ -1,3 +1,8 @@
+"""
+Key Data Structure of SFM
+including co-vis-map, map Node, map edge
+provides simple and easy-to-use APIs
+"""
 from collections import defaultdict
 from itertools import product
 
@@ -152,10 +157,6 @@ class Graph:
         edge.u, edge.v = u, v
         edge.parent = self
         self._G.add_edge(u, v, data=edge)
-
-    def full_edges(self) -> List[Tuple[int, int]]:
-        full_edges = [(u, v) for u, v in product(self._G.nodes, repeat=2) if u > v]
-        return full_edges
 
     @property
     def edges(self) -> List['Edge']:
