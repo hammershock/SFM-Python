@@ -1,6 +1,6 @@
 # SFM-Python
-增量式多视图结构重建（Structure From Motion）——Python 实现的简单练习
-——CV Course大作业
+增量式多视图结构重建（Structure From Motion）—— 一个用Python的简单实现
+
 
 [![opencv-python](https://img.shields.io/badge/opencv--python-4.9.0.80-blue)](https://pypi.org/project/opencv-python/)
 [![numpy](https://img.shields.io/badge/numpy-1.26.4-orange)](https://pypi.org/project/numpy/)
